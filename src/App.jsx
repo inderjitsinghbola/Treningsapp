@@ -1206,7 +1206,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
   );
 }
 
-export default export default function App() {
+export default function App() {
   const [program, setProgram] = useState(null);
   const [logs, setLogs] = useState([]);
   const [session, setSession] = useState(null);
