@@ -34,8 +34,6 @@
   <div id="root"></div>
   <script>
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = useViewError;
 const { useState, useEffect } = React;
 function SvgIcon({ size = 20, children, style }) {
     return React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", style }, ...children);
@@ -1076,29 +1074,6 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
                         "S",
                         i + 1),
                     React.createElement(NumAdj, { value: r, onChange: v => updRep(i, v), step: 1, min: 0 })))))))));
-}
-function useViewError(viewName) {
-    const [err, setErr] = useState(null);
-    const wrap = (fn) => { try {
-        return fn();
-    }
-    catch (e) {
-        setErr(e);
-        return null;
-    } };
-    if (err)
-        return [
-            React.createElement("div", { style: { background: "#080808", color: "#f0f0f0", padding: 24, fontFamily: "monospace", minHeight: "100vh" } },
-                React.createElement("div", { style: { color: "#dc2626", fontWeight: "bold", marginBottom: 8 } },
-                    viewName,
-                    " krasjet \u2014 kopier til Claude:"),
-                React.createElement("pre", { style: { color: "#fbbf24", fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all" } },
-                    err.message,
-                    "\n",
-                    err.stack)),
-            wrap
-        ];
-    return [null, wrap];
 }
 function App() {
     const [program, setProgram] = useState(null);
