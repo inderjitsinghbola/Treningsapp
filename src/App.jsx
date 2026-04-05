@@ -507,7 +507,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
 
   return (
     <div className="min-h-screen" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0" style={{ zIndex: 50 }} style={{ background: C.bg + "f2", borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0" style={{ zIndex: 50, background: C.bg + "f2", borderBottom: `1px solid ${C.border}`, paddingTop: "env(safe-area-inset-top)" }}>
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center gap-3 mb-2">
             <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -823,11 +823,20 @@ function HistoryView({ logs, program, onBack, onDeleteLog }) {
                   <div className="flex items-center gap-3">
                     <div className="font-mono text-xs" style={{ color: C.muted }}>{fmtDate(log.startedAt)}</div>
                     {confirmDelete === i
-                      ? <div className="flex gap-1">
-                          <div onClick={() => { onDeleteLog(i); setConfirmDelete(null); }} className="text-xs font-bold px-2 py-1 rounded-lg cursor-pointer" style={{ background: C.red, color: "#fff" }}>Slett</div>
-                          <div onClick={() => setConfirmDelete(null)} className="text-xs px-2 py-1 rounded-lg cursor-pointer" style={{ background: C.inner, color: C.muted }}>Avbryt</div>
+                      ? <div className="flex gap-2" style={{ zIndex: 100 }}>
+                          <div onTouchEnd={(e) => { e.preventDefault(); onDeleteLog(i); setConfirmDelete(null); }} onClick={() => { onDeleteLog(i); setConfirmDelete(null); }}
+                            style={{ background: C.red, color: "#fff", padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: "bold", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+                            Slett
+                          </div>
+                          <div onTouchEnd={(e) => { e.preventDefault(); setConfirmDelete(null); }} onClick={() => setConfirmDelete(null)}
+                            style={{ background: C.inner, color: C.muted, padding: "8px 14px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: `1px solid ${C.border}` }}>
+                            Avbryt
+                          </div>
                         </div>
-                      : <div onClick={() => setConfirmDelete(i)} className="p-1 rounded-lg cursor-pointer" style={{ color: C.dim }}><X size={14} /></div>
+                      : <div onTouchEnd={(e) => { e.preventDefault(); setConfirmDelete(i); }} onClick={() => setConfirmDelete(i)}
+                          style={{ padding: 8, cursor: "pointer", color: C.dim }}>
+                          <X size={16} />
+                        </div>
                     }
                   </div>
                 </div>
@@ -1338,7 +1347,7 @@ export default function App() {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}><div className="font-mono text-sm animate-pulse" style={{ color: C.muted }}>Laster...</div></div>;
   return (
-    <div className="min-h-screen" style={{ background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif" }}>
+    <div className="min-h-screen" style={{ background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif", paddingTop: "env(safe-area-inset-top)" }}>
       {view === "home" && <HomeView program={program} logs={logs} session={session} saveStatus={saveStatus} onStart={doStart} onContinue={() => setView("session")} onAbandon={() => { setSession(null); persist(program, logs, null); }} onProgram={() => setView("overview")} onHistory={() => setView("history")} onProgression={() => setView("progression")} onSettings={() => setView("settings")} />}
       {view === "session" && session && <SessionView session={session} program={program} saveStatus={saveStatus} onUpdate={doUpdateSession} onComplete={doComplete} onBack={() => setView("home")} />}
       {view === "overview" && <OverviewView program={program} onBack={() => setView("home")} onEdit={(day, exId) => { setEditTarget({ day, exId }); setView("edit"); }} onAdd={(day) => { setAddTarget(day); setView("add"); }} onReorder={doReorder} onDelete={doDelete} />}
