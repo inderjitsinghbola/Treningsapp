@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ReactDOM from "react-dom/client";
 import { Check, Edit2, TrendingUp, ArrowLeft, Plus, Minus, Trophy, ChevronRight, ChevronDown, X, Clock, List, Eye, EyeOff, RotateCcw, Settings, RefreshCw } from "lucide-react";
 
 // ─── PLATE MATH ───────────────────────────────────────────────────────────────
@@ -1336,7 +1337,5 @@ export default function App() {
   );
 }
 
-import ReactDOM from "react-dom/client";
-ReactDOM.createRoot(document.getElementById("root")).render(
-  React.createElement(App, null)
-);
+const root = document.getElementById("root");
+ReactDOM.createRoot(root).render(<App />);
