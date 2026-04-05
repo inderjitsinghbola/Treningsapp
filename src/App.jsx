@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
+import "./index.css";
 import { Check, Edit2, TrendingUp, ArrowLeft, Plus, Minus, Trophy, ChevronRight, ChevronDown, X, Clock, List, Eye, EyeOff, RotateCcw, Settings, RefreshCw } from "lucide-react";
 
 // ─── PLATE MATH ───────────────────────────────────────────────────────────────
