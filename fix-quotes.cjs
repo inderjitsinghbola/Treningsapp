@@ -9,4 +9,4 @@ c = c
 .replace(/\u2019/g, `\u0027`);
 fs.writeFileSync(file, c);
 console.log(`Fixed: ` + file);
-});
+}); 
