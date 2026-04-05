@@ -9,14 +9,43 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="Training"/>
   <title>Training Log</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{background:#080808;color:#f0f0f0;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
-    #root{min-height:100vh;min-height:100dvh}
-  </style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080808;color:#f0f0f0;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+#root{min-height:100vh;min-height:100dvh}
+.flex{display:flex}.flex-col{flex-direction:column}.flex-1{flex:1 1 0%}.grid{display:grid}
+.grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.items-center{align-items:center}.items-end{align-items:flex-end}
+.justify-between{justify-content:space-between}.justify-center{justify-content:center}
+.gap-0\.5{gap:2px}.gap-1{gap:4px}.gap-1\.5{gap:6px}.gap-2{gap:8px}.gap-3{gap:12px}
+.w-2{width:8px}.w-5{width:20px}.w-7{width:28px}.w-8{width:32px}.w-10{width:40px}.w-16{width:64px}.w-full{width:100%}
+.h-0\.5{height:2px}.h-1{height:4px}.h-1\.5{height:6px}.h-2{height:8px}.h-7{height:28px}.h-8{height:32px}.h-9{height:36px}.h-24{height:96px}.h-full{height:100%}
+.min-h-screen{min-height:100vh}.min-w-0{min-width:0}.min-w-\[60px\]{min-width:60px}
+.max-w-lg{max-width:32rem}.mx-auto{margin-left:auto;margin-right:auto}
+.p-1\.5{padding:6px}.p-2{padding:8px}.p-3{padding:12px}.p-4{padding:16px}
+.px-1{padding-left:4px;padding-right:4px}.px-2{padding-left:8px;padding-right:8px}.px-3{padding-left:12px;padding-right:12px}.px-4{padding-left:16px;padding-right:16px}
+.py-0\.5{padding-top:2px;padding-bottom:2px}.py-1{padding-top:4px;padding-bottom:4px}.py-1\.5{padding-top:6px;padding-bottom:6px}.py-2{padding-top:8px;padding-bottom:8px}.py-2\.5{padding-top:10px;padding-bottom:10px}.py-3{padding-top:12px;padding-bottom:12px}.py-4{padding-top:16px;padding-bottom:16px}.py-6{padding-top:24px;padding-bottom:24px}.py-16{padding-top:64px;padding-bottom:64px}
+.pt-2\.5{padding-top:10px}.pt-8{padding-top:32px}.pb-1{padding-bottom:4px}.pb-4{padding-bottom:16px}.pb-8{padding-bottom:32px}.pb-32{padding-bottom:128px}
+.mt-0\.5{margin-top:2px}.mt-1{margin-top:4px}.mt-1\.5{margin-top:6px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}
+.mb-1{margin-bottom:4px}.mb-1\.5{margin-bottom:6px}.mb-2{margin-bottom:8px}.mb-3{margin-bottom:12px}.mb-4{margin-bottom:16px}.mb-5{margin-bottom:20px}.mb-6{margin-bottom:24px}.mb-8{margin-bottom:32px}
+.ml-2{margin-left:8px}.ml-3{margin-left:12px}.ml-auto{margin-left:auto}.mr-2{margin-right:8px}.mr-3{margin-right:12px}
+.text-xs{font-size:12px;line-height:16px}.text-sm{font-size:14px;line-height:20px}.text-base{font-size:16px;line-height:24px}.text-lg{font-size:18px;line-height:28px}.text-xl{font-size:20px;line-height:28px}.text-2xl{font-size:24px;line-height:32px}.text-3xl{font-size:30px;line-height:36px}
+.font-mono{font-family:ui-monospace,monospace}.font-semibold{font-weight:600}.font-bold{font-weight:700}.font-black{font-weight:900}
+.leading-none{line-height:1}.uppercase{text-transform:uppercase}.tracking-wide{letter-spacing:.025em}.tracking-widest{letter-spacing:.1em}
+.text-left{text-align:left}.text-center{text-align:center}.text-right{text-align:right}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rounded{border-radius:4px}.rounded-lg{border-radius:8px}.rounded-xl{border-radius:12px}.rounded-full{border-radius:9999px}
+.overflow-hidden{overflow:hidden}.overflow-auto{overflow:auto}
+.shrink-0{flex-shrink:0}.space-y-1>*+*{margin-top:4px}.space-y-2>*+*{margin-top:8px}.space-y-3>*+*{margin-top:12px}.space-y-4>*+*{margin-top:16px}.space-y-5>*+*{margin-top:20px}
+.sticky{position:sticky}.fixed{position:fixed}.top-0{top:0}.bottom-0{bottom:0}.left-0{left:0}.right-0{right:0}.z-10{z-index:10}
+.cursor-pointer{cursor:pointer}.focus\:outline-none:focus{outline:none}
+.transition-all{transition:all .15s}.duration-500{transition-duration:500ms}
+.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.active\:scale-90:active{transform:scale(.9)}.active\:scale-95:active{transform:scale(.95)}
+</style>
 </head>
 <body>
   <div id="root"></div>
