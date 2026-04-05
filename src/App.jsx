@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import ReactDOM from "react-dom/client";
-import "./index.css";
 import { Check, Edit2, TrendingUp, ArrowLeft, Plus, Minus, Trophy, ChevronRight, ChevronDown, X, Clock, List, Eye, EyeOff, RotateCcw, Settings, RefreshCw } from "lucide-react";
 
 // ─── PLATE MATH ───────────────────────────────────────────────────────────────
@@ -249,15 +247,15 @@ function buildSession(ex) {
     return { id: ex.id, type: "top_set", topWeight: ex.topWeight, actualReps: ex.topReps, confirmed: false, guide,
       drops: ex.dropConfigs.map((cfg, i) => ({ weight: dw[i] ?? 0, actualReps: cfg.targetReps, confirmed: false })) };
   }
-  if (ex.type === "rep_range") return { id: ex.id, type: "rep_range", weight: ex.weight, reps: ex.lastReps.length === ex.numSets ? [...ex.lastReps] : Array(ex.numSets).fill(ex.minReps) };
+  if (ex.type === "rep_range") return { id: ex.id, type: "rep_range", weight: ex.weight, confirmed: false, reps: ex.lastReps.length === ex.numSets ? [...ex.lastReps] : Array(ex.numSets).fill(ex.minReps) };
   return { id: ex.id, type: "checkbox", completed: false };
 }
 
 function newSession(day, prog) { return { day, startedAt: new Date().toISOString(), exercises: prog[day].exercises.map(buildSession) }; }
-function isExDone(ex) { if (ex.type === "top_set") return ex.confirmed && (ex.drops.length === 0 || ex.drops.every(d => d.confirmed)); if (ex.type === "checkbox") return ex.completed; return true; }
+function isExDone(ex) { if (ex.type === "top_set") return ex.confirmed && (ex.drops.length === 0 || ex.drops.every(d => d.confirmed)); if (ex.type === "rep_range") return ex.confirmed === true; if (ex.type === "checkbox") return ex.completed; return false; }
 function getAlerts(prog, day) { return prog[day].exercises.flatMap(ex => { if (ex.type === "top_set" && (ex.successCount || 0) >= 3) return [{ id: ex.id, name: ex.name, newW: ex.topWeight + ex.increment, inc: ex.increment }]; if (ex.type === "rep_range" && ex.increment > 0 && ex.lastReps.every(r => r >= ex.maxReps)) return [{ id: ex.id, name: ex.name, newW: ex.weight + ex.increment, inc: ex.increment }]; return []; }); }
 
-const C = { bg: "#080808", card: "#141414", inner: "#1c1c1c", border: "#252525", red: "#dc2626", redDim: "#7f1d1d", orange: "#c2410c", green: "#16a34a", text: "#f0f0f0", muted: "#6b7280", dim: "#374151" };
+const C = { bg: "#0a0a0a", card: "#181818", inner: "#222222", border: "#333333", red: "#e53e3e", redDim: "#7f1d1d", orange: "#dd6b20", green: "#38a169", text: "#f7f7f7", muted: "#a0aec0", dim: "#4a5568" };
 
 function Btn({ onClick, children, color = "red", disabled = false, className = "" }) {
   const bg = { red: C.red, gray: "#1e1e1e", green: C.green }[color] ?? C.red;
@@ -407,24 +405,33 @@ function TopSetCard({ ex, cfg, onUpdate }) {
 function RepRangeCard({ ex, cfg, onUpdate }) {
   const allMax = ex.reps.every(r => r >= cfg.maxReps);
   const prevMax = cfg.lastReps.every(r => r >= cfg.maxReps) && cfg.increment > 0;
+  const done = ex.confirmed;
   return (
-    <div className="p-4 rounded-xl" style={{ background: C.card, border: `1px solid ${C.border}` }}>
-      <div className="flex items-center justify-between mb-3">
-        {cfg.bodyweight ? <span className="font-mono font-black" style={{ color: C.text }}>Kroppsvekt</span>
-          : <NumAdj value={ex.weight} onChange={w => onUpdate({ ...ex, weight: w })} step={2.5} />}
-        <div className="text-right"><div className="text-xs uppercase tracking-widest" style={{ color: C.muted }}>Mål</div><div className="font-mono text-sm font-bold" style={{ color: C.muted }}>{Array(cfg.numSets).fill(cfg.maxReps).join("/")}</div></div>
-      </div>
-      {prevMax && <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3 text-xs font-semibold" style={{ background: "#1c1005", border: "1px solid #92400e55", color: "#fbbf24" }}><TrendingUp size={13} /> Nådde rep-mål sist — vurder å øke vekt</div>}
-      <div className="flex gap-2">
-        {ex.reps.map((r, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center py-3 rounded-xl" style={{ background: C.inner, border: `1px solid ${C.border}` }}>
-            <div className="text-xs font-bold mb-1.5" style={{ color: C.muted }}>S{i + 1}</div>
-            <RepBtn value={r} onChange={v => { const reps = [...ex.reps]; reps[i] = v; onUpdate({ ...ex, reps }); }} />
-            <div className="font-mono text-xs mt-1.5" style={{ color: C.dim }}>sist:{cfg.lastReps[i]}</div>
+    <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${done ? C.green + "55" : C.border}` }}>
+      <div className="p-4" style={{ background: done ? C.card : C.card }}>
+        <div className="flex items-center justify-between mb-3">
+          {cfg.bodyweight ? <span className="font-mono font-black" style={{ color: C.text }}>Kroppsvekt</span>
+            : <NumAdj value={ex.weight} onChange={w => onUpdate({ ...ex, weight: w, confirmed: false })} step={2.5} />}
+          <div className="flex items-center gap-3">
+            {done && <span className="flex items-center gap-1 text-xs font-bold" style={{ color: C.green }}><Check size={12} />OK</span>}
+            <div className="text-right"><div className="text-xs uppercase tracking-widest" style={{ color: C.muted }}>Mål</div><div className="font-mono text-sm font-bold" style={{ color: C.muted }}>{Array(cfg.numSets).fill(cfg.maxReps).join("/")}</div></div>
           </div>
-        ))}
+        </div>
+        {prevMax && <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3 text-xs font-semibold" style={{ background: "#1c1005", border: "1px solid #92400e55", color: "#fbbf24" }}><TrendingUp size={13} /> Nådde rep-mål sist — vurder å øke vekt</div>}
+        <div className="flex gap-2 mb-3">
+          {ex.reps.map((r, i) => (
+            <div key={i} className="flex-1 flex flex-col items-center py-3 rounded-xl" style={{ background: C.inner, border: `1px solid ${C.border}` }}>
+              <div className="text-xs font-bold mb-1.5" style={{ color: C.muted }}>S{i + 1}</div>
+              <RepBtn value={r} onChange={v => { const reps = [...ex.reps]; reps[i] = v; onUpdate({ ...ex, reps, confirmed: false }); }} />
+              <div className="font-mono text-xs mt-1.5" style={{ color: C.dim }}>sist:{cfg.lastReps[i]}</div>
+            </div>
+          ))}
+        </div>
+        {allMax && !done && <div className="text-center text-xs font-bold mb-2" style={{ color: C.green }}>🎯 Rep-mål nådd!</div>}
+        {!done
+          ? <Btn onClick={() => onUpdate({ ...ex, confirmed: true })} color="gray" className="w-full py-3 rounded-xl text-sm">✓ Bekreft sett</Btn>
+          : <div className="text-center text-xs font-bold py-1" style={{ color: C.green }}>✓ Fullført</div>}
       </div>
-      {allMax && <div className="text-center text-xs font-bold mt-3" style={{ color: C.green }}>🎯 Rep-mål nådd!</div>}
     </div>
   );
 }
@@ -547,78 +554,55 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
 
 // ─── SETTINGS VIEW ────────────────────────────────────────────────────────────
 function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
-  const [token, setToken] = useState(() => { try { return localStorage.getItem("wt-gist-token") || ""; } catch { return ""; } });
-  const [gistId, setGistId] = useState(() => { try { return localStorage.getItem("wt-gist-id") || ""; } catch { return ""; } });
+  const [url, setUrl] = useState(() => { try { return localStorage.getItem("wt-gs-url") || ""; } catch { return ""; } });
   const [saved, setSaved] = useState(false);
-
-  const save = (t, g) => {
-    try { localStorage.setItem("wt-gist-token", t); localStorage.setItem("wt-gist-id", g); } catch {}
-    setSaved(true); setTimeout(() => setSaved(false), 2000);
-  };
-
-  const ready = token.length > 10 && gistId.length > 10;
-
+  const saveUrl = (v) => { setUrl(v); try { localStorage.setItem("wt-gs-url", v); } catch {} setSaved(true); setTimeout(() => setSaved(false), 2000); };
+  const ready = url.length > 20;
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50, background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
           <span className="font-black text-lg">Innstillinger</span>
         </div>
       </div>
-      <div className="max-w-lg mx-auto p-4 space-y-4">
-
+      <div className="max-w-lg mx-auto p-4 space-y-4" style={{ paddingTop: 20 }}>
         <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
-          <div className="px-4 py-3" style={{ background: C.inner }}>
-            <span className="font-black text-sm">GitHub Gist backup</span>
-          </div>
-
+          <div className="px-4 py-3" style={{ background: C.inner }}><span className="font-black text-sm">Google Sheets backup</span></div>
           <div className="px-4 py-4 space-y-3" style={{ background: C.card }}>
-            <div>
-              <div className="text-xs uppercase tracking-widest mb-1.5 font-bold" style={{ color: C.muted }}>Personal Access Token</div>
-              <input value={token} onChange={e => { setToken(e.target.value); save(e.target.value, gistId); }}
-                placeholder="ghp_xxxxxxxxxxxx"
-                className="w-full rounded-xl px-4 py-3 text-xs focus:outline-none"
-                style={{ background: C.inner, color: C.text, border: `1px solid ${C.border}` }} />
-            </div>
-            <div>
-              <div className="text-xs uppercase tracking-widest mb-1.5 font-bold" style={{ color: C.muted }}>Gist ID</div>
-              <input value={gistId} onChange={e => { setGistId(e.target.value); save(token, e.target.value); }}
-                placeholder="abc123def456..."
-                className="w-full rounded-xl px-4 py-3 text-xs focus:outline-none"
-                style={{ background: C.inner, color: C.text, border: `1px solid ${C.border}` }} />
-            </div>
-            {saved && <div className="text-xs" style={{ color: C.green }}>✓ Lagret</div>}
+            <div className="text-xs uppercase tracking-widest mb-1.5 font-bold" style={{ color: C.muted }}>Apps Script URL</div>
+            <input value={url} onChange={e => saveUrl(e.target.value)}
+              placeholder="https://script.google.com/macros/s/..."
+              className="w-full rounded-xl px-4 py-3 text-xs focus:outline-none"
+              style={{ background: C.inner, color: C.text, border: `1px solid ${C.border}` }} />
+            {saved && <div className="text-xs" style={{ color: C.green }}>✓ URL lagret</div>}
           </div>
-
           {ready && (
             <div className="px-4 py-4 space-y-2" style={{ background: C.card, borderTop: `1px solid ${C.border}` }}>
               <div onClick={onSyncNow} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm cursor-pointer"
                 style={{ background: C.green, color: "#fff" }}>
                 <RefreshCw size={15} />
-                {syncStatus === "syncing" ? "Lagrer…" : syncStatus === "ok" ? "✓ Backup lagret!" : syncStatus === "fail" ? "! Feil — sjekk token/ID" : "Ta backup nå"}
+                {syncStatus === "syncing" ? "Synkroniserer…" : syncStatus === "ok" ? "✓ Synkronisert!" : syncStatus === "fail" ? "! Feil — sjekk URL" : "Synkroniser nå"}
               </div>
               <div onClick={onRestore} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm cursor-pointer"
                 style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}>
-                ↓ Gjenopprett fra backup
+                ↓ Gjenopprett fra Google Sheets
               </div>
             </div>
           )}
         </div>
-
         <div className="rounded-xl px-4 py-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
           <div className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: C.muted }}>Hva lagres?</div>
           <div className="text-xs space-y-1" style={{ color: C.muted }}>
-            <div>• Full backup i GitHub Gist etter hver økt</div>
-            <div>• Alt (program, logger, historikk) i én JSON-fil</div>
-            <div>• Gjenopprett på ny telefon med token + Gist ID</div>
+            <div>• Automatisk backup til Google Sheets etter hver økt</div>
+            <div>• Lesbar logg i Logger-fanen</div>
+            <div>• Full gjenoppretting fra Backup-fanen</div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
 function HomeView({ program, logs, session, saveStatus, onStart, onContinue, onAbandon, onProgram, onHistory, onProgression, onSettings }) {
   const lastFor = day => logs.find(l => l.day === day);
   const elapsed = useElapsed(session?.startedAt);
@@ -1217,57 +1201,39 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState("");
   const [syncStatus, setSyncStatus] = useState(""); // "" | "syncing" | "ok" | "fail"
 
-  const getGistCfg = () => {
-    try {
-      return {
-        token: localStorage.getItem("wt-gist-token") || "",
-        id: localStorage.getItem("wt-gist-id") || ""
-      };
-    } catch { return { token: "", id: "" }; }
-  };
+  const getGsUrl = () => { try { return localStorage.getItem("wt-gs-url") || ""; } catch { return ""; } };
 
   const syncToGoogle = async (prog, lg, sess) => {
-    const { token, id } = getGistCfg();
-    if (!token || !id) return;
+    const url = getGsUrl();
+    if (!url) return;
     setSyncStatus("syncing");
     try {
-      const res = await fetch(`https://api.github.com/gists/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-          "Accept": "application/vnd.github+json"
-        },
-        body: JSON.stringify({
-          files: {
-            "treningapp-backup.json": {
-              content: JSON.stringify({ program: prog, logs: lg, session: sess, savedAt: new Date().toISOString() }, null, 2)
-            }
-          }
-        })
+      const res = await fetch(url, {
+        method: "POST",
+        body: JSON.stringify({ program: prog, logs: lg, session: sess }),
+        headers: { "Content-Type": "text/plain" }
       });
-      setSyncStatus(res.ok ? "ok" : "fail");
+      const text = await res.text();
+      setSyncStatus(text.includes('"ok":true') || res.ok ? "ok" : "fail");
     } catch { setSyncStatus("fail"); }
     setTimeout(() => setSyncStatus(""), 3000);
   };
 
   const restoreFromGoogle = async () => {
-    const { token, id } = getGistCfg();
-    if (!token || !id) return;
+    const url = getGsUrl();
+    if (!url) return;
     setSyncStatus("syncing");
     try {
-      const res = await fetch(`https://api.github.com/gists/${id}`, {
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/vnd.github+json" }
-      });
-      const gist = await res.json();
-      const raw = gist.files?.["treningapp-backup.json"]?.content;
-      if (!raw) { setSyncStatus("fail"); return; }
-      const data = JSON.parse(raw);
-      if (data.program) { setProgram(data.program); }
-      if (data.logs) setLogs(data.logs);
-      setSession(null);
-      await saveAll({ program: data.program || program, logs: data.logs || logs, session: null });
-      setSyncStatus("ok");
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.ok && json.data) {
+        const d = json.data;
+        if (d.program) setProgram(d.program);
+        if (d.logs) setLogs(d.logs);
+        setSession(null);
+        await saveAll({ program: d.program || program, logs: d.logs || logs, session: null });
+        setSyncStatus("ok");
+      } else { setSyncStatus("fail"); }
     } catch { setSyncStatus("fail"); }
     setTimeout(() => setSyncStatus(""), 3000);
   };
@@ -1275,12 +1241,25 @@ export default function App() {
   // Load once on mount
   useEffect(() => {
     (async () => {
-      const data = await loadAll();
-      if (data) {
-        setProgram(data.program || JSON.parse(JSON.stringify(BASE_PROGRAM)));
-        setLogs(data.logs || SEED_LOGS);
-        if (data.session) setSession(data.session);
-      } else {
+      try {
+        const data = await loadAll();
+        if (data && data.program) {
+          // Migrate leg_curl_m → hip_thrust_m
+          if (data.program.monday) {
+            data.program.monday.exercises = data.program.monday.exercises.map(ex =>
+              ex.id === "leg_curl_m"
+                ? { id: "hip_thrust_m", name: "Hip Thrusts", type: "rep_range", weight: 60, numSets: 3, minReps: 6, maxReps: 10, lastReps: [8,8,8], increment: 5 }
+                : ex
+            );
+          }
+          setProgram(data.program);
+          setLogs(data.logs || SEED_LOGS);
+          if (data.session) setSession(data.session);
+        } else {
+          setProgram(JSON.parse(JSON.stringify(BASE_PROGRAM)));
+          setLogs(SEED_LOGS);
+        }
+      } catch(e) {
         setProgram(JSON.parse(JSON.stringify(BASE_PROGRAM)));
         setLogs(SEED_LOGS);
       }
@@ -1369,5 +1348,3 @@ export default function App() {
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
