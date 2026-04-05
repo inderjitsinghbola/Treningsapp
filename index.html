@@ -12,18 +12,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script>
-    window.onerror = function(m,s,l,c,e) {
-      var d = document.createElement('div');
-      d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#080808;color:#f0f0f0;padding:24px;font-family:monospace;z-index:9999;overflow:auto';
-      var stack = e && e.stack ? e.stack : (m + ' linje:' + l + ':' + c);
-      d.innerHTML = '<b style="color:#dc2626">Feil — kopier til Claude:</b><br><br><pre style="color:#fbbf24;font-size:11px;white-space:pre-wrap;word-break:break-all">' + stack + '</pre><br><button onclick="location.reload()" style="background:#dc2626;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-weight:bold">Last pa nytt</button>';
-      document.body.appendChild(d);
-    };
-    window.addEventListener('unhandledrejection', function(e) {
-      window.onerror(String(e.reason), '', 0, 0, e.reason);
-    });
-  </script>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{background:#080808;color:#f0f0f0;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
@@ -1256,7 +1244,30 @@ function App() {
         view === "add" && addTarget && React.createElement(AddExerciseView, { day: addTarget, program: program, onSave: doAddExercise, onBack: () => { setView("overview"); setAddTarget(null); } }),
         view === "settings" && React.createElement(SettingsView, { onBack: () => setView("home"), onSyncNow: () => syncToGoogle(program, logs, session), onRestore: restoreFromGoogle, syncStatus: syncStatus })));
 }
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+
+class ErrorBoundary extends React.Component {
+constructor(p) { super(p); this.state = { err: null, info: null }; }
+static getDerivedStateFromError(e) { return { err: e }; }
+componentDidCatch(e, i) { this.setState({ err: e, info: i }); }
+render() {
+if (this.state.err) {
+var e = this.state.err;
+var msg = (e.message || String(e)) + ‘\n’ + (e.stack || ‘’);
+return React.createElement(‘div’,
+{ style: { background:’#080808’, color:’#f0f0f0’, padding:24, minHeight:‘100vh’, fontFamily:‘monospace’, overflow:‘auto’ } },
+React.createElement(‘div’, { style: { color:’#dc2626’, fontWeight:‘bold’, marginBottom:12 } }, ‘Feil — kopier til Claude:’),
+React.createElement(‘pre’, { style: { color:’#fbbf24’, fontSize:11, whiteSpace:‘pre-wrap’, wordBreak:‘break-all’ } }, msg),
+React.createElement(‘button’, {
+onClick: function() { this.setState({ err: null }); }.bind(this),
+style: { marginTop:16, background:’#dc2626’, color:’#fff’, border:‘none’, padding:‘10px 20px’, borderRadius:8, fontWeight:‘bold’, cursor:‘pointer’ }
+}, ‘Prøv igjen’)
+);
+}
+return this.props.children;
+}
+}
+
+ReactDOM.createRoot(document.getElementById(“root”)).render(React.createElement(ErrorBoundary, null, React.createElement(App)));
 
   </script>
 </body>
