@@ -17,20 +17,12 @@
     body{background:#080808;color:#f0f0f0;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
     #root{min-height:100vh;min-height:100dvh}
   </style>
-  <script>
-    window.onerror = function(msg, src, line, col, err) {
-      document.body.innerHTML = '<div style="background:#080808;color:#f0f0f0;padding:24px;font-family:monospace;min-height:100vh"><div style="color:#dc2626;font-weight:bold;font-size:16px;margin-bottom:12px">Feil — send til Claude:</div><pre style="color:#fbbf24;font-size:11px;white-space:pre-wrap;word-break:break-all">' + msg + '\n\nLinje: ' + line + ':' + col + '\n\n' + (err && err.stack ? err.stack : '') + '</pre><button onclick="location.reload()" style="margin-top:16px;background:#dc2626;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-weight:bold">Last på nytt</button></div>';
-      return false;
-    };
-    window.addEventListener('unhandledrejection', function(e) {
-      window.onerror(e.reason && e.reason.message ? e.reason.message : String(e.reason), '', 0, 0, e.reason);
-    });
-  </script>
 </head>
 <body>
   <div id="root"></div>
   <script>
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 const { useState, useEffect } = React;
 function SvgIcon({ size = 20, children, style }) {
     return React.createElement('svg', { xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round", style }, ...children);
@@ -318,6 +310,9 @@ function NumAdj({ value, onChange, step = 2.5, min = 0 }) {
         React.createElement("span", { className: "font-mono font-bold text-center min-w-[60px]", style: { color: C.text } }, value),
         React.createElement("button", { onClick: () => onChange(+(value + step).toFixed(4)), className: "w-8 h-8 rounded-lg flex items-center justify-center active:scale-90", style: { background: C.inner, color: C.muted, border: `1px solid ${C.border}` } },
             React.createElement(Plus, { size: 13 }))));
+    ErrorBoundary >
+    ;
+    ;
 }
 function RepBtn({ value, onChange }) {
     return (React.createElement("div", { className: "flex flex-col items-center gap-1" },
@@ -326,6 +321,9 @@ function RepBtn({ value, onChange }) {
         React.createElement("span", { className: "font-mono font-black text-2xl leading-none py-0.5", style: { color: C.text } }, value),
         React.createElement("button", { onClick: () => onChange(Math.max(0, value - 1)), className: "w-10 h-9 rounded-lg flex items-center justify-center active:scale-90", style: { background: C.inner, border: `1px solid ${C.border}`, color: C.muted } },
             React.createElement(Minus, { size: 15 }))));
+    ErrorBoundary >
+    ;
+    ;
 }
 // ─── PLATE GUIDE CARD ─────────────────────────────────────────────────────────
 function PlateGuideCard({ guide }) {
@@ -375,6 +373,9 @@ function PlateGuideCard({ guide }) {
                     "\u2212",
                     d.pct,
                     "%"))))))));
+    ErrorBoundary >
+    ;
+    ;
 }
 // ─── TOP SET CARD ─────────────────────────────────────────────────────────────
 function TopSetCard({ ex, cfg, onUpdate }) {
@@ -445,6 +446,9 @@ function TopSetCard({ ex, cfg, onUpdate }) {
                     i + 1),
                 !drop.confirmed && !ex.confirmed && React.createElement("p", { className: "text-xs", style: { color: C.dim } }, "Fullf\u00F8r top set f\u00F8rst")));
         })));
+    ErrorBoundary >
+    ;
+    ;
 }
 function RepRangeCard({ ex, cfg, onUpdate }) {
     const allMax = ex.reps.every(r => r >= cfg.maxReps);
@@ -468,6 +472,9 @@ function RepRangeCard({ ex, cfg, onUpdate }) {
                 "sist:",
                 cfg.lastReps[i]))))),
         allMax && React.createElement("div", { className: "text-center text-xs font-bold mt-3", style: { color: C.green } }, "\uD83C\uDFAF Rep-m\u00E5l n\u00E5dd!")));
+    ErrorBoundary >
+    ;
+    ;
 }
 function CheckboxCard({ ex, cfg, onUpdate }) {
     return (React.createElement("div", { className: "p-4 rounded-xl flex items-center justify-between", style: { background: C.card, border: `1px solid ${C.border}` } },
@@ -476,6 +483,9 @@ function CheckboxCard({ ex, cfg, onUpdate }) {
             React.createElement(Check, { size: 15 }),
             " ",
             ex.completed ? "Fullført" : "Fullfør")));
+    ErrorBoundary >
+    ;
+    ;
 }
 function useElapsed(startedAt) {
     const [elapsed, setElapsed] = useState(0);
@@ -587,6 +597,9 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
             React.createElement("div", { className: "max-w-lg mx-auto flex gap-2" },
                 !allDone && (React.createElement("button", { onClick: () => setSummary(true), className: "px-4 py-4 rounded-xl font-bold text-sm active:scale-95 shrink-0", style: { background: C.inner, color: C.muted, border: `1px solid ${C.border}` } }, "Avslutt tidlig")),
                 React.createElement(Btn, { onClick: () => setSummary(true), color: allDone ? "green" : "gray", disabled: !allDone, className: "flex-1 py-4 rounded-xl text-base" }, allDone ? "🎉 Fullfør økt" : `${doneCount}/${total} øvelser ferdig`)))));
+    ErrorBoundary >
+    ;
+    ;
 }
 // ─── SETTINGS VIEW ────────────────────────────────────────────────────────────
 function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
@@ -642,6 +655,9 @@ function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
                     React.createElement("div", null, "\u2022 Full backup i GitHub Gist etter hver \u00F8kt"),
                     React.createElement("div", null, "\u2022 Alt (program, logger, historikk) i \u00E9n JSON-fil"),
                     React.createElement("div", null, "\u2022 Gjenopprett p\u00E5 ny telefon med token + Gist ID"))))));
+    ErrorBoundary >
+    ;
+    ;
 }
 function HomeView({ program, logs, session, saveStatus, onStart, onContinue, onAbandon, onProgram, onHistory, onProgression, onSettings }) {
     const lastFor = day => logs.find(l => l.day === day);
@@ -709,6 +725,9 @@ function HomeView({ program, logs, session, saveStatus, onStart, onContinue, onA
             React.createElement("div", { className: "grid grid-cols-3 gap-2" }, [["Program", React.createElement(List, { size: 15 }), onProgram], ["Historikk", React.createElement(Clock, { size: 15 }), onHistory], ["Progresjon", React.createElement(TrendingUp, { size: 15 }), onProgression]].map(([lbl, icon, fn]) => (React.createElement("button", { key: lbl, onClick: fn, className: "flex items-center justify-center gap-1.5 py-3 rounded-xl font-semibold text-xs active:scale-95", style: { background: C.card, color: C.muted, border: `1px solid ${C.border}` } },
                 icon,
                 lbl)))))));
+    ErrorBoundary >
+    ;
+    ;
 }
 function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
     const [open, setOpen] = useState("monday");
@@ -752,6 +771,9 @@ function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
                         React.createElement(Plus, { size: 14 }),
                         React.createElement("span", { className: "text-sm font-semibold" }, "Legg til \u00F8velse"))))));
         }))));
+    ErrorBoundary >
+    ;
+    ;
 }
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
 function buildCSV(logs, program) {
@@ -821,6 +843,9 @@ function HistoryView({ logs, program, onBack }) {
                                 ex.type === "checkbox" && (ex.completed ? "✓" : "—"))));
                     })));
             })))));
+    ErrorBoundary >
+    ;
+    ;
 }
 // ─── PROGRESSION VIEW ─────────────────────────────────────────────────────────
 function ProgressionView({ logs, program, onBack }) {
@@ -934,6 +959,9 @@ function ProgressionView({ logs, program, onBack }) {
                             " kg"),
                         selected.bodyweight && React.createElement("span", { className: "font-mono font-bold text-sm", style: { color: C.text } }, "BW"),
                         React.createElement("span", { className: "font-mono text-xs ml-3", style: { color: C.muted } }, selected.type === "top_set" ? `×${p.reps} reps` : p.repsRaw ? p.repsRaw.join("/") : `snitt ${p.reps}`))))))))))))));
+    ErrorBoundary >
+    ;
+    ;
 }
 // ─── ADD EXERCISE VIEW ────────────────────────────────────────────────────────
 function AddExerciseView({ day, program, onSave, onBack }) {
@@ -1008,6 +1036,9 @@ function AddExerciseView({ day, program, onSave, onBack }) {
             type === "checkbox" && (React.createElement("div", { className: "rounded-xl p-4", style: { background: C.card, border: `1px solid ${C.border}` } },
                 React.createElement("div", { className: "text-xs uppercase tracking-widest mb-2", style: { color: C.muted } }, "Notat"),
                 React.createElement("input", { value: note, onChange: e => setNote(e.target.value), className: "w-full rounded-lg px-4 py-3 text-sm focus:outline-none", style: { background: C.inner, color: C.text, border: `1px solid ${C.border}` } }))))));
+    ErrorBoundary >
+    ;
+    ;
 }
 function EditView({ program, day, exerciseId, onSave, onBack }) {
     var _a, _b;
@@ -1071,7 +1102,26 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
                         "S",
                         i + 1),
                     React.createElement(NumAdj, { value: r, onChange: v => updRep(i, v), step: 1, min: 0 })))))))));
+    ErrorBoundary >
+    ;
+    ;
 }
+class ErrorBoundary extends React.Component {
+    constructor(p) { super(p); this.state = { err: null }; }
+    static getDerivedStateFromError(e) { return { err: e }; }
+    componentDidCatch(e, info) { console.error("Crash:", e, info); }
+    render() {
+        if (this.state.err) {
+            const msg = this.state.err.toString() + "\n" + (this.state.err.stack || "");
+            return (React.createElement("div", { style: { background: "#080808", color: "#f0f0f0", padding: 24, minHeight: "100vh", fontFamily: "monospace" } },
+                React.createElement("div", { style: { color: "#dc2626", fontWeight: "bold", marginBottom: 12 } }, "Feil \u2014 send til Claude:"),
+                React.createElement("pre", { style: { color: "#fbbf24", fontSize: 11, whiteSpace: "pre-wrap", wordBreak: "break-all" } }, msg),
+                React.createElement("button", { onClick: () => this.setState({ err: null }), style: { marginTop: 16, background: "#dc2626", color: "#fff", border: "none", padding: "10px 20px", borderRadius: 8, fontWeight: "bold" } }, "Pr\u00F8v igjen")));
+        }
+        return this.props.children;
+    }
+}
+exports.default = ErrorBoundary;
 function App() {
     const [program, setProgram] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -1243,15 +1293,16 @@ function App() {
     if (loading)
         return React.createElement("div", { className: "min-h-screen flex items-center justify-center", style: { background: C.bg } },
             React.createElement("div", { className: "font-mono text-sm animate-pulse", style: { color: C.muted } }, "Laster..."));
-    return (React.createElement("div", { className: "min-h-screen", style: { background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif" } },
-        view === "home" && React.createElement(HomeView, { program: program, logs: logs, session: session, saveStatus: saveStatus, onStart: doStart, onContinue: () => setView("session"), onAbandon: () => { setSession(null); persist(program, logs, null); }, onProgram: () => setView("overview"), onHistory: () => setView("history"), onProgression: () => setView("progression"), onSettings: () => setView("settings") }),
-        view === "session" && session && React.createElement(SessionView, { session: session, program: program, saveStatus: saveStatus, onUpdate: doUpdateSession, onComplete: doComplete, onBack: () => setView("home") }),
-        view === "overview" && React.createElement(OverviewView, { program: program, onBack: () => setView("home"), onEdit: (day, exId) => { setEditTarget({ day, exId }); setView("edit"); }, onAdd: (day) => { setAddTarget(day); setView("add"); }, onReorder: doReorder, onDelete: doDelete }),
-        view === "history" && React.createElement(HistoryView, { logs: logs, program: program, onBack: () => setView("home") }),
-        view === "progression" && React.createElement(ProgressionView, { logs: logs, program: program, onBack: () => setView("home") }),
-        view === "edit" && editTarget && React.createElement(EditView, { program: program, day: editTarget.day, exerciseId: editTarget.exId, onSave: doSaveEdit, onBack: () => { setView("overview"); setEditTarget(null); } }),
-        view === "add" && addTarget && React.createElement(AddExerciseView, { day: addTarget, program: program, onSave: doAddExercise, onBack: () => { setView("overview"); setAddTarget(null); } }),
-        view === "settings" && React.createElement(SettingsView, { onBack: () => setView("home"), onSyncNow: () => syncToGoogle(program, logs, session), onRestore: restoreFromGoogle, syncStatus: syncStatus })));
+    return (React.createElement(ErrorBoundary, null,
+        React.createElement("div", { className: "min-h-screen", style: { background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif" } },
+            view === "home" && React.createElement(HomeView, { program: program, logs: logs, session: session, saveStatus: saveStatus, onStart: doStart, onContinue: () => setView("session"), onAbandon: () => { setSession(null); persist(program, logs, null); }, onProgram: () => setView("overview"), onHistory: () => setView("history"), onProgression: () => setView("progression"), onSettings: () => setView("settings") }),
+            view === "session" && session && React.createElement(SessionView, { session: session, program: program, saveStatus: saveStatus, onUpdate: doUpdateSession, onComplete: doComplete, onBack: () => setView("home") }),
+            view === "overview" && React.createElement(OverviewView, { program: program, onBack: () => setView("home"), onEdit: (day, exId) => { setEditTarget({ day, exId }); setView("edit"); }, onAdd: (day) => { setAddTarget(day); setView("add"); }, onReorder: doReorder, onDelete: doDelete }),
+            view === "history" && React.createElement(HistoryView, { logs: logs, program: program, onBack: () => setView("home") }),
+            view === "progression" && React.createElement(ProgressionView, { logs: logs, program: program, onBack: () => setView("home") }),
+            view === "edit" && editTarget && React.createElement(EditView, { program: program, day: editTarget.day, exerciseId: editTarget.exId, onSave: doSaveEdit, onBack: () => { setView("overview"); setEditTarget(null); } }),
+            view === "add" && addTarget && React.createElement(AddExerciseView, { day: addTarget, program: program, onSave: doAddExercise, onBack: () => { setView("overview"); setAddTarget(null); } }),
+            view === "settings" && React.createElement(SettingsView, { onBack: () => setView("home"), onSyncNow: () => syncToGoogle(program, logs, session), onRestore: restoreFromGoogle, syncStatus: syncStatus }))));
 }
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 
