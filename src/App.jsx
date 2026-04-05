@@ -822,22 +822,9 @@ function HistoryView({ logs, program, onBack, onDeleteLog }) {
                   <div className="font-black text-sm">{d.label} <span style={{ color: C.muted, fontWeight: 400 }}>— {d.sub}</span></div>
                   <div className="flex items-center gap-3">
                     <div className="font-mono text-xs" style={{ color: C.muted }}>{fmtDate(log.startedAt)}</div>
-                    {confirmDelete === i
-                      ? <div className="flex gap-2" style={{ zIndex: 100 }}>
-                          <div onTouchEnd={(e) => { e.preventDefault(); onDeleteLog(i); setConfirmDelete(null); }} onClick={() => { onDeleteLog(i); setConfirmDelete(null); }}
-                            style={{ background: C.red, color: "#fff", padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: "bold", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
-                            Slett
-                          </div>
-                          <div onTouchEnd={(e) => { e.preventDefault(); setConfirmDelete(null); }} onClick={() => setConfirmDelete(null)}
-                            style={{ background: C.inner, color: C.muted, padding: "8px 14px", borderRadius: 8, fontSize: 13, cursor: "pointer", border: `1px solid ${C.border}` }}>
-                            Avbryt
-                          </div>
-                        </div>
-                      : <div onTouchEnd={(e) => { e.preventDefault(); setConfirmDelete(i); }} onClick={() => setConfirmDelete(i)}
-                          style={{ padding: 8, cursor: "pointer", color: C.dim }}>
-                          <X size={16} />
-                        </div>
-                    }
+                    <div onClick={() => setConfirmDelete(i)} style={{ padding: 8, cursor: "pointer", color: C.dim }}>
+                      <X size={16} />
+                    </div>
                   </div>
                 </div>
                 {log.exercises.map(ex => {
@@ -858,6 +845,28 @@ function HistoryView({ logs, program, onBack, onDeleteLog }) {
           })}
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmDelete !== null && (
+        <div onClick={() => setConfirmDelete(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480 }}>
+            <div style={{ fontWeight: "900", fontSize: 16, marginBottom: 8, color: C.text }}>Slett økt?</div>
+            <div style={{ color: C.muted, fontSize: 14, marginBottom: 20 }}>Dette kan ikke angres.</div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <div onClick={() => { onDeleteLog(confirmDelete); setConfirmDelete(null); }}
+                style={{ flex: 1, background: C.red, color: "#fff", padding: "14px 0", borderRadius: 12, fontWeight: "bold", fontSize: 15, textAlign: "center", cursor: "pointer" }}>
+                Slett
+              </div>
+              <div onClick={() => setConfirmDelete(null)}
+                style={{ flex: 1, background: "#2a2a2a", color: C.muted, padding: "14px 0", borderRadius: 12, fontWeight: "bold", fontSize: 15, textAlign: "center", cursor: "pointer", border: "1px solid #333" }}>
+                Avbryt
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
