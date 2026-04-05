@@ -155,7 +155,7 @@ const BASE_PROGRAM = {
   monday: { label: "Økt A", sub: "Bench + Hinge", exercises: [
     { id: "bench", name: "Bench Press", type: "top_set", barWeight: 20, topWeight: 85, topReps: 4, dropConfigs: [{ dropPct: .10, targetReps: 6 }, { dropPct: .10, targetReps: 6 }, { dropPct: .10, targetReps: 6 }], increment: 2.5, successCount: 0, showWarmup: true },
     { id: "deadlift", name: "Deadlift", type: "top_set", barWeight: 20, topWeight: 130, topReps: 4, dropConfigs: [], increment: 5, successCount: 0, showWarmup: true },
-    { id: "leg_curl_m", name: "Leg Curl", type: "rep_range", weight: 35, numSets: 3, minReps: 6, maxReps: 10, lastReps: [10, 10, 8], increment: 2.5 },
+    { id: "hip_thrust_m", name: "Hip Thrusts", type: "rep_range", weight: 60, numSets: 3, minReps: 6, maxReps: 10, lastReps: [8, 8, 8], increment: 5 },
     { id: "cable_row", name: "Seated Cable Row", type: "rep_range", weight: 70, numSets: 3, minReps: 6, maxReps: 10, lastReps: [10, 8, 9], increment: 2.5 },
     { id: "lat_m", name: "Lateral Raises", type: "rep_range", weight: 7.5, numSets: 3, minReps: 6, maxReps: 15, lastReps: [8, 7, 7], increment: 2.5 },
     { id: "tri_push", name: "Triceps Pushdown", type: "rep_range", weight: 27.5, numSets: 3, minReps: 6, maxReps: 10, lastReps: [9, 9, 9], increment: 2.5 },
@@ -183,7 +183,7 @@ const SEED_LOGS = [
   { day: "monday", startedAt: "2026-03-30T09:00:00.000Z", completedAt: "2026-03-30T10:30:00.000Z", exercises: [
     { id: "bench", type: "top_set", topWeight: 85, actualReps: 4, confirmed: true, drops: [{ weight: 80, actualReps: 6, confirmed: true }, { weight: 70, actualReps: 6, confirmed: true }, { weight: 60, actualReps: 6, confirmed: true }] },
     { id: "deadlift", type: "top_set", topWeight: 130, actualReps: 4, confirmed: true, drops: [] },
-    { id: "leg_curl_m", type: "rep_range", weight: 35, reps: [10, 10, 8] },
+    { id: "hip_thrust_m", type: "rep_range", weight: 60, reps: [8, 8, 8] },
     { id: "cable_row", type: "rep_range", weight: 70, reps: [10, 8, 9] },
     { id: "lat_m", type: "rep_range", weight: 7.5, reps: [8, 7, 7] },
     { id: "tri_push", type: "rep_range", weight: 27.5, reps: [9, 9, 9] },
@@ -207,15 +207,37 @@ const SEED_LOGS = [
   ]}
 ];
 
-// Storage — localStorage
+// Storage — tries window.storage first, falls back to localStorage
 const STORAGE_KEY = "wt-v2";
 
 async function loadAll() {
-  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+  // Try window.storage
+  try {
+    const r = await window.storage.get(STORAGE_KEY);
+    if (r && r.value) return JSON.parse(r.value);
+  } catch {}
+  // Fallback: localStorage
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
 }
 
 async function saveAll(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); return true; } catch { return false; }
+  const json = JSON.stringify(data);
+  let ok = false;
+  // Try window.storage
+  try {
+    await window.storage.set(STORAGE_KEY, json);
+    ok = true;
+  } catch {}
+  // Always also try localStorage (belt and suspenders)
+  try {
+    localStorage.setItem(STORAGE_KEY, json);
+    ok = true;
+  } catch {}
+  return ok;
 }
 
 function buildSession(ex) {
@@ -341,7 +363,7 @@ function TopSetCard({ ex, cfg, onUpdate }) {
     <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${done ? C.green + "55" : C.border}` }}>
       {cfg.showWarmup && <PlateGuideCard guide={ex.guide} />}
 
-      <div className="p-4" style={{ background: ex.confirmed ? C.card : "#150a0a" }}>
+      <div className="p-4" style={{ background: ex.confirmed ? C.card : "#1a0808", border: ex.confirmed ? "none" : "none" }}>
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-black uppercase tracking-widest" style={{ color: C.red }}>Top Set</span>
           {ex.confirmed && <span className="flex items-center gap-1 text-xs font-bold" style={{ color: C.green }}><Check size={12} />OK</span>}
@@ -357,7 +379,7 @@ function TopSetCard({ ex, cfg, onUpdate }) {
       </div>
 
       {ex.drops.map((drop, i) => (
-        <div key={i} className="p-4" style={{ background: drop.confirmed ? C.card : C.inner, borderTop: `1px solid ${C.border}` }}>
+        <div key={i} className="p-4" style={{ background: drop.confirmed ? "#1a1a1a" : "#222222", borderTop: `1px solid ${C.border}` }}>
           <div className="flex items-center justify-between mb-2">
             <div>
               <span className="text-xs font-black uppercase tracking-widest" style={{ color: C.orange }}>Drop {i + 1}</span>
@@ -453,10 +475,10 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
 
   if (summary) return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3"><button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button><span className="font-black text-lg">Økt fullført</span></div>
       </div>
-      <div className="max-w-lg mx-auto p-4 space-y-4">
+      <div className="max-w-lg mx-auto p-4 space-y-4" style={{ paddingTop: 20 }}>
         <div className="text-center py-6"><Trophy size={52} style={{ color: "#eab308", margin: "0 auto 12px" }} /><div className="font-black text-2xl">{dp.label} — ferdig! 🔥</div><div className="text-sm mt-1" style={{ color: C.muted }}>{dp.sub}</div><div className="font-mono text-lg font-black mt-3" style={{ color: C.muted }}>{fmtElapsed(elapsed)}</div></div>
         {postAlerts.length > 0 ? (
           <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
@@ -476,7 +498,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
 
   return (
     <div className="min-h-screen" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10" style={{ background: C.bg + "f2", borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0" style={{ zIndex: 50 }} style={{ background: C.bg + "f2", borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center gap-3 mb-2">
             <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -492,7 +514,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
           <div className="h-0.5 rounded-full" style={{ background: C.inner }}><div className="h-full rounded-full transition-all duration-500" style={{ width: `${(doneCount / total) * 100}%`, background: allDone ? C.green : C.red }} /></div>
         </div>
       </div>
-      <div className="max-w-lg mx-auto p-4 space-y-5 pb-32">
+      <div className="max-w-lg mx-auto p-4 space-y-5 pb-32" style={{ paddingTop: 16 }}>
         {session.exercises.map((ex, idx) => {
           const cfg = dp.exercises.find(e => e.id === ex.id); if (!cfg) return null;
           const done = isExDone(ex);
@@ -538,7 +560,7 @@ function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
 
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
           <span className="font-black text-lg">Innstillinger</span>
@@ -677,7 +699,7 @@ function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
 
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -690,7 +712,7 @@ function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
           </div>
         </div>
       </div>
-      <div className="max-w-lg mx-auto p-4 space-y-3">
+      <div className="max-w-lg mx-auto p-4 space-y-3" style={{ paddingTop: 20 }}>
         {days.map(day => {
           const d = program[day], isOpen = open === day;
           return (
@@ -769,19 +791,20 @@ function buildCSV(logs, program) {
 }
 
 // ─── HISTORY VIEW ─────────────────────────────────────────────────────────────
-function HistoryView({ logs, program, onBack }) {
+function HistoryView({ logs, program, onBack, onDeleteLog }) {
   const [filter, setFilter] = useState("all");
   const [csvOpen, setCsvOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const filtered = filter === "all" ? logs : logs.filter(l => l.day === filter);
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
           <span className="font-black text-lg">Historikk</span>
         </div>
       </div>
-      <div className="max-w-lg mx-auto p-4">
+      <div className="max-w-lg mx-auto p-4" style={{ paddingTop: 20 }}>
         <div className="mb-4 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
           <div onClick={() => setCsvOpen(v => !v)}
             className="flex items-center justify-between px-4 py-3 cursor-pointer"
@@ -811,7 +834,16 @@ function HistoryView({ logs, program, onBack }) {
               <div key={i} className="rounded-xl overflow-hidden" style={{ background: C.card, border: `1px solid ${C.border}` }}>
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: `1px solid ${C.border}` }}>
                   <div className="font-black text-sm">{d.label} <span style={{ color: C.muted, fontWeight: 400 }}>— {d.sub}</span></div>
-                  <div className="font-mono text-xs" style={{ color: C.muted }}>{fmtDate(log.startedAt)}</div>
+                  <div className="flex items-center gap-3">
+                    <div className="font-mono text-xs" style={{ color: C.muted }}>{fmtDate(log.startedAt)}</div>
+                    {confirmDelete === i
+                      ? <div className="flex gap-1">
+                          <div onClick={() => { onDeleteLog(i); setConfirmDelete(null); }} className="text-xs font-bold px-2 py-1 rounded-lg cursor-pointer" style={{ background: C.red, color: "#fff" }}>Slett</div>
+                          <div onClick={() => setConfirmDelete(null)} className="text-xs px-2 py-1 rounded-lg cursor-pointer" style={{ background: C.inner, color: C.muted }}>Avbryt</div>
+                        </div>
+                      : <div onClick={() => setConfirmDelete(i)} className="p-1 rounded-lg cursor-pointer" style={{ color: C.dim }}><X size={14} /></div>
+                    }
+                  </div>
                 </div>
                 {log.exercises.map(ex => {
                   const cfg = d.exercises.find(e => e.id === ex.id); if (!cfg) return null;
@@ -885,7 +917,7 @@ function ProgressionView({ logs, program, onBack }) {
 
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={selEx ? () => setSelEx(null) : onBack} className="p-2 rounded-xl" style={{ background: C.card }}>
             <ArrowLeft size={20} />
@@ -1057,7 +1089,7 @@ function AddExerciseView({ day, program, onSave, onBack }) {
 
   return (
     <div className="min-h-screen pb-8" style={{background:C.bg, color:C.text}}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{background:C.bg, borderBottom:`1px solid ${C.border}`}}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{background:C.bg, borderBottom:`1px solid ${C.border}`, zIndex: 50}}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{background:C.card}}><X size={20}/></button>
           <span className="font-black text-lg flex-1">Ny oevelse</span>
@@ -1125,7 +1157,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
   const Row = ({ label, children }) => <div className="flex items-center justify-between py-3" style={{ borderBottom: `1px solid ${C.border}` }}><span className="text-sm" style={{ color: C.muted }}>{label}</span>{children}</div>;
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><X size={20} /></button>
           <span className="font-black text-lg flex-1 truncate">{orig.name}</span>
@@ -1174,7 +1206,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
   );
 }
 
-export default function App() {
+export default export default function App() {
   const [program, setProgram] = useState(null);
   const [logs, setLogs] = useState([]);
   const [session, setSession] = useState(null);
@@ -1329,7 +1361,7 @@ export default function App() {
       {view === "home" && <HomeView program={program} logs={logs} session={session} saveStatus={saveStatus} onStart={doStart} onContinue={() => setView("session")} onAbandon={() => { setSession(null); persist(program, logs, null); }} onProgram={() => setView("overview")} onHistory={() => setView("history")} onProgression={() => setView("progression")} onSettings={() => setView("settings")} />}
       {view === "session" && session && <SessionView session={session} program={program} saveStatus={saveStatus} onUpdate={doUpdateSession} onComplete={doComplete} onBack={() => setView("home")} />}
       {view === "overview" && <OverviewView program={program} onBack={() => setView("home")} onEdit={(day, exId) => { setEditTarget({ day, exId }); setView("edit"); }} onAdd={(day) => { setAddTarget(day); setView("add"); }} onReorder={doReorder} onDelete={doDelete} />}
-      {view === "history" && <HistoryView logs={logs} program={program} onBack={() => setView("home")} />}
+      {view === "history" && <HistoryView logs={logs} program={program} onBack={() => setView("home")} onDeleteLog={(i) => { const newLogs = logs.filter((_, idx) => idx !== i); saveLogs(newLogs); }} />}
       {view === "progression" && <ProgressionView logs={logs} program={program} onBack={() => setView("home")} />}
       {view === "edit" && editTarget && <EditView program={program} day={editTarget.day} exerciseId={editTarget.exId} onSave={doSaveEdit} onBack={() => { setView("overview"); setEditTarget(null); }} />}
       {view === "add" && addTarget && <AddExerciseView day={addTarget} program={program} onSave={doAddExercise} onBack={() => { setView("overview"); setAddTarget(null); }} />}
@@ -1338,5 +1370,4 @@ export default function App() {
   );
 }
 
-const root = document.getElementById("root");
-ReactDOM.createRoot(root).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
