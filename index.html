@@ -674,7 +674,7 @@ function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
 function HomeView({ program, logs, session, saveStatus, onStart, onContinue, onAbandon, onProgram, onHistory, onProgression, onSettings }) {
     const lastFor = day => logs.find(l => l.day === day);
     const elapsed = useElapsed(session === null || session === void 0 ? void 0 : session.startedAt);
-    return (React.createElement("div", { className: "min-h-screen pb-8", style: { background: C.bg, color: C.text } },
+    try { return (React.createElement("div", { className: "min-h-screen pb-8", style: { background: C.bg, color: C.text } },
         React.createElement("div", { className: "max-w-lg mx-auto px-4 pt-8 pb-4" },
             React.createElement("div", { className: "flex items-center justify-between mb-8" },
                 React.createElement("div", null,
@@ -736,7 +736,7 @@ function HomeView({ program, logs, session, saveStatus, onStart, onContinue, onA
             })),
             React.createElement("div", { className: "grid grid-cols-3 gap-2" }, [["Program", React.createElement(List, { size: 15 }), onProgram], ["Historikk", React.createElement(Clock, { size: 15 }), onHistory], ["Progresjon", React.createElement(TrendingUp, { size: 15 }), onProgression]].map(([lbl, icon, fn]) => (React.createElement("button", { key: lbl, onClick: fn, className: "flex items-center justify-center gap-1.5 py-3 rounded-xl font-semibold text-xs active:scale-95", style: { background: C.card, color: C.muted, border: `1px solid ${C.border}` } },
                 icon,
-                lbl)))))));
+                lbl)))))) } catch(_viewErr) { return (function(e){var s=e?(e.message+'\n'+(e.stack||'')):'?';return React.createElement('div',{style:{background:'#080808',color:'#f0f0f0',padding:24,minHeight:'100vh',fontFamily:'monospace',overflow:'auto'}},React.createElement('div',{style:{color:'#dc2626',fontWeight:'bold',marginBottom:12}},'HomeView feil:'),React.createElement('pre',{style:{color:'#fbbf24',fontSize:11,whiteSpace:'pre-wrap',wordBreak:'break-all'}},s));})(_viewErr); });
 }
 function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
     const [open, setOpen] = useState("monday");
@@ -1182,19 +1182,30 @@ function App() {
     };
     // Load once on mount
     useEffect(() => {
+        // Timeout fallback in case async init hangs
+        const timeout = setTimeout(() => {
+            setProgram(JSON.parse(JSON.stringify(BASE_PROGRAM)));
+            setLogs(SEED_LOGS);
+            setLoading(false);
+        }, 3000);
         (async () => {
-            const data = await loadAll();
-            if (data) {
-                setProgram(data.program || JSON.parse(JSON.stringify(BASE_PROGRAM)));
-                setLogs(data.logs || SEED_LOGS);
-                if (data.session)
-                    setSession(data.session);
-            }
-            else {
+            try {
+                const data = await loadAll();
+                if (data && data.program) {
+                    setProgram(data.program);
+                    setLogs(data.logs || SEED_LOGS);
+                    if (data.session) setSession(data.session);
+                } else {
+                    setProgram(JSON.parse(JSON.stringify(BASE_PROGRAM)));
+                    setLogs(SEED_LOGS);
+                }
+            } catch(e) {
                 setProgram(JSON.parse(JSON.stringify(BASE_PROGRAM)));
                 setLogs(SEED_LOGS);
+            } finally {
+                clearTimeout(timeout);
+                setLoading(false);
             }
-            setLoading(false);
         })();
     }, []);
     // Single save function — writes everything atomically
