@@ -777,10 +777,9 @@ function buildCSV(logs, program) {
 }
 
 // ─── HISTORY VIEW ─────────────────────────────────────────────────────────────
-function HistoryView({ logs, program, onBack, onDeleteLog }) {
+function HistoryView({ logs, program, onBack, onDeleteLog, onConfirmDelete }) {
   const [filter, setFilter] = useState("all");
   const [csvOpen, setCsvOpen] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
   const filtered = filter === "all" ? logs : logs.filter(l => l.day === filter);
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
@@ -822,7 +821,7 @@ function HistoryView({ logs, program, onBack, onDeleteLog }) {
                   <div className="font-black text-sm">{d.label} <span style={{ color: C.muted, fontWeight: 400 }}>— {d.sub}</span></div>
                   <div className="flex items-center gap-3">
                     <div className="font-mono text-xs" style={{ color: C.muted }}>{fmtDate(log.startedAt)}</div>
-                    <div onClick={() => setConfirmDelete(i)} style={{ padding: 8, cursor: "pointer", color: C.dim }}>
+                    <div onClick={() => onConfirmDelete(i)} style={{ padding: 8, cursor: "pointer", color: C.dim }}>
                       <X size={16} />
                     </div>
                   </div>
@@ -846,27 +845,7 @@ function HistoryView({ logs, program, onBack, onDeleteLog }) {
         </div>
       </div>
 
-      {/* Delete confirmation modal */}
-      {confirmDelete !== null && (
-        <div onClick={() => setConfirmDelete(null)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: 16 }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480 }}>
-            <div style={{ fontWeight: "900", fontSize: 16, marginBottom: 8, color: C.text }}>Slett økt?</div>
-            <div style={{ color: C.muted, fontSize: 14, marginBottom: 20 }}>Dette kan ikke angres.</div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <div onClick={() => { onDeleteLog(confirmDelete); setConfirmDelete(null); }}
-                style={{ flex: 1, background: C.red, color: "#fff", padding: "14px 0", borderRadius: 12, fontWeight: "bold", fontSize: 15, textAlign: "center", cursor: "pointer" }}>
-                Slett
-              </div>
-              <div onClick={() => setConfirmDelete(null)}
-                style={{ flex: 1, background: "#2a2a2a", color: C.muted, padding: "14px 0", borderRadius: 12, fontWeight: "bold", fontSize: 15, textAlign: "center", cursor: "pointer", border: "1px solid #333" }}>
-                Avbryt
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
@@ -1219,7 +1198,8 @@ export default function App() {
   const [addTarget, setAddTarget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("");
-  const [syncStatus, setSyncStatus] = useState(""); // "" | "syncing" | "ok" | "fail"
+  const [syncStatus, setSyncStatus] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null); // "" | "syncing" | "ok" | "fail"
 
   const getGsUrl = () => { try { return localStorage.getItem("wt-gs-url") || ""; } catch { return ""; } };
 
@@ -1360,11 +1340,29 @@ export default function App() {
       {view === "home" && <HomeView program={program} logs={logs} session={session} saveStatus={saveStatus} onStart={doStart} onContinue={() => setView("session")} onAbandon={() => { setSession(null); persist(program, logs, null); }} onProgram={() => setView("overview")} onHistory={() => setView("history")} onProgression={() => setView("progression")} onSettings={() => setView("settings")} />}
       {view === "session" && session && <SessionView session={session} program={program} saveStatus={saveStatus} onUpdate={doUpdateSession} onComplete={doComplete} onBack={() => setView("home")} />}
       {view === "overview" && <OverviewView program={program} onBack={() => setView("home")} onEdit={(day, exId) => { setEditTarget({ day, exId }); setView("edit"); }} onAdd={(day) => { setAddTarget(day); setView("add"); }} onReorder={doReorder} onDelete={doDelete} />}
-      {view === "history" && <HistoryView logs={logs} program={program} onBack={() => setView("home")} onDeleteLog={(i) => { const newLogs = logs.filter((_, idx) => idx !== i); saveLogs(newLogs); }} />}
+      {view === "history" && <HistoryView logs={logs} program={program} onBack={() => setView("home")} onDeleteLog={(i) => { const newLogs = logs.filter((_, idx) => idx !== i); setLogs(newLogs); persist(program, newLogs, session); }} onConfirmDelete={(i) => setConfirmDelete(i)} />}
       {view === "progression" && <ProgressionView logs={logs} program={program} onBack={() => setView("home")} />}
       {view === "edit" && editTarget && <EditView program={program} day={editTarget.day} exerciseId={editTarget.exId} onSave={doSaveEdit} onBack={() => { setView("overview"); setEditTarget(null); }} />}
       {view === "add" && addTarget && <AddExerciseView day={addTarget} program={program} onSave={doAddExercise} onBack={() => { setView("overview"); setAddTarget(null); }} />}
       {view === "settings" && <SettingsView onBack={() => setView("home")} onSyncNow={() => syncToGoogle(program, logs, session)} onRestore={restoreFromGoogle} syncStatus={syncStatus} />}
+      {confirmDelete !== null && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "16px 16px 40px 16px", background: "rgba(0,0,0,0.8)" }}>
+          <div style={{ background: "#1c1c1c", border: "1px solid #444", borderRadius: 20, padding: 24, width: "100%", maxWidth: 480 }}>
+            <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 6, color: "#f7f7f7" }}>Slett økt?</div>
+            <div style={{ color: "#a0aec0", fontSize: 14, marginBottom: 24 }}>Dette kan ikke angres.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={() => { const newLogs = logs.filter((_, idx) => idx !== confirmDelete); setLogs(newLogs); persist(program, newLogs, session); setConfirmDelete(null); }}
+                style={{ width: "100%", background: "#e53e3e", color: "#fff", border: "none", borderRadius: 14, padding: "16px 0", fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
+                Slett økt
+              </button>
+              <button onClick={() => setConfirmDelete(null)}
+                style={{ width: "100%", background: "#2a2a2a", color: "#a0aec0", border: "1px solid #444", borderRadius: 14, padding: "16px 0", fontWeight: 700, fontSize: 16, cursor: "pointer" }}>
+                Avbryt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
