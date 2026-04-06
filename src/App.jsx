@@ -176,6 +176,8 @@ const BASE_PROGRAM = {
     { id: "bss", name: "Bulgarian Split Squat", type: "rep_range", weight: 12, numSets: 3, minReps: 6, maxReps: 10, lastReps: [9, 9, 9], increment: 2.5 },
     { id: "incline_db", name: "Incline DB Bench", type: "rep_range", weight: 32, numSets: 3, minReps: 6, maxReps: 10, lastReps: [7, 8, 7], increment: 2.5 },
     { id: "lat_f", name: "Lateral Raises", type: "rep_range", weight: 7.5, numSets: 3, minReps: 8, maxReps: 14, lastReps: [8, 7, 7], increment: 2.5 },
+    { id: "biceps_curl_f", name: "Biceps Curls", type: "rep_range", weight: 12, numSets: 3, minReps: 6, maxReps: 12, lastReps: [8, 8, 8], increment: 1 },
+    { id: "calves_f", name: "Calves", type: "rep_range", weight: 90, numSets: 3, minReps: 8, maxReps: 14, lastReps: [10, 10, 10], increment: 5 },
   ]}
 };
 
@@ -204,6 +206,8 @@ const SEED_LOGS = [
     { id: "bss", type: "rep_range", weight: 12, reps: [9, 9, 9] },
     { id: "incline_db", type: "rep_range", weight: 32, reps: [7, 8, 7] },
     { id: "lat_f", type: "rep_range", weight: 7.5, reps: [8, 7, 7] },
+    { id: "biceps_curl_f", type: "rep_range", weight: 12, reps: [8, 8, 8] },
+    { id: "calves_f", type: "rep_range", weight: 90, reps: [10, 10, 10] },
   ]}
 ];
 
@@ -264,12 +268,33 @@ function Btn({ onClick, children, color = "red", disabled = false, className = "
   return <button onClick={onClick} disabled={disabled} className={`font-bold transition-all active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed ${className}`} style={{ background: bg, color: "#fff", border: color === "gray" ? `1px solid ${C.border}` : "none", cursor: disabled ? "not-allowed" : "pointer" }}>{children}</button>;
 }
 
-function NumAdj({ value, onChange, step = 2.5, min = 0 }) {
+const STEPS = [0.5, 1, 2.5, 5, 10];
+// Store step preferences outside React so they survive re-renders
+const _stepStore = {};
+
+function NumAdj({ value, onChange, step = 2.5, min = 0, allowStepChange = false, sid = "default" }) {
+  const key = sid;
+  if (_stepStore[key] === undefined) _stepStore[key] = step;
+  const [curStep, setCurStep] = useState(() => _stepStore[key]);
+  const dec = () => onChange(Math.max(min, +(value - curStep).toFixed(4)));
+  const inc = () => onChange(+(value + curStep).toFixed(4));
+  const cycleStep = () => {
+    const next = STEPS[(STEPS.indexOf(curStep) + 1) % STEPS.length];
+    _stepStore[key] = next;
+    setCurStep(next);
+  };
   return (
-    <div className="flex items-center gap-2">
-      <button onClick={() => onChange(Math.max(min, +(value - step).toFixed(4)))} className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-90" style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}><Minus size={13} /></button>
-      <span className="font-mono font-bold text-center min-w-[60px]" style={{ color: C.text }}>{value}</span>
-      <button onClick={() => onChange(+(value + step).toFixed(4))} className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-90" style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}><Plus size={13} /></button>
+    <div className="flex items-center gap-1.5">
+      <button onClick={dec} className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-90" style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}><Minus size={13} /></button>
+      <div className="flex flex-col items-center" style={{ minWidth: 60 }}>
+        <span className="font-mono font-bold text-center" style={{ color: C.text }}>{value}</span>
+        {allowStepChange && (
+          <button onClick={cycleStep} style={{ fontSize: 9, color: C.muted, background: "#2a2a2a", border: `1px solid ${C.border}`, borderRadius: 4, padding: "1px 5px", marginTop: 2, cursor: "pointer" }}>
+            ±{curStep}
+          </button>
+        )}
+      </div>
+      <button onClick={inc} className="w-8 h-8 rounded-lg flex items-center justify-center active:scale-90" style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}><Plus size={13} /></button>
     </div>
   );
 }
@@ -370,7 +395,7 @@ function TopSetCard({ ex, cfg, onUpdate }) {
         </div>
         <div className="flex items-center justify-between mb-3">
           {cfg.bodyweight ? <span className="font-mono font-black text-xl" style={{ color: C.text }}>BW</span>
-            : <NumAdj value={ex.topWeight} onChange={setTopW} step={cfg.increment || 2.5} />}
+            : <NumAdj value={ex.topWeight} onChange={setTopW} step={cfg.increment || 2.5} allowStepChange={true} sid={"ts-"+ex.id} />}
           <div className="text-right"><div className="text-xs uppercase tracking-widest mb-1" style={{ color: C.muted }}>Reps</div><NumAdj value={ex.actualReps} onChange={r => u({ actualReps: r })} step={1} min={1} /></div>
         </div>
         <div className="mb-3">{pTag(ex.topWeight)}</div>
@@ -392,7 +417,7 @@ function TopSetCard({ ex, cfg, onUpdate }) {
             {drop.confirmed && <span className="flex items-center gap-1 text-xs font-bold" style={{ color: C.green }}><Check size={12} />OK</span>}
           </div>
           <div className="flex items-center justify-between mb-2">
-            <NumAdj value={drop.weight} onChange={w => u({ drops: ex.drops.map((d, j) => j === i ? { ...d, weight: w } : d) })} step={2.5} />
+            <NumAdj value={drop.weight} onChange={w => u({ drops: ex.drops.map((d, j) => j === i ? { ...d, weight: w } : d) })} step={2.5} allowStepChange={true} sid={"dr-"+ex.id+"-"+i} />
             <div className="text-right"><div className="text-xs uppercase tracking-widest mb-1" style={{ color: C.muted }}>Reps</div><NumAdj value={drop.actualReps} onChange={r => u({ drops: ex.drops.map((d, j) => j === i ? { ...d, actualReps: r } : d) })} step={1} min={1} /></div>
           </div>
           <div className="mb-2">{pTag(drop.weight)}</div>
@@ -413,7 +438,7 @@ function RepRangeCard({ ex, cfg, onUpdate }) {
       <div className="p-4" style={{ background: done ? C.card : C.card }}>
         <div className="flex items-center justify-between mb-3">
           {cfg.bodyweight ? <span className="font-mono font-black" style={{ color: C.text }}>Kroppsvekt</span>
-            : <NumAdj value={ex.weight} onChange={w => onUpdate({ ...ex, weight: w, confirmed: false })} step={2.5} />}
+            : <NumAdj value={ex.weight} onChange={w => onUpdate({ ...ex, weight: w, confirmed: false })} step={2.5} allowStepChange={true} sid={"rr-"+ex.id} />}
           <div className="flex items-center gap-3">
             {done && <span className="flex items-center gap-1 text-xs font-bold" style={{ color: C.green }}><Check size={12} />OK</span>}
             <div className="text-right"><div className="text-xs uppercase tracking-widest" style={{ color: C.muted }}>Mål</div><div className="font-mono text-sm font-bold" style={{ color: C.muted }}>{Array(cfg.numSets).fill(cfg.maxReps).join("/")}</div></div>
@@ -1103,7 +1128,7 @@ function AddExerciseView({ day, program, onSave, onBack }) {
                 {bodyweight?"Ja":"Nei"}
               </div>
             </Row>
-            {!bodyweight && <Row label="Startvekt (kg)"><NumAdj value={weight} onChange={setWeight} step={2.5}/></Row>}
+            {!bodyweight && <Row label="Startvekt (kg)"><NumAdj value={weight} onChange={setWeight} step={2.5} allowStepChange={true}/></Row>}
             <Row label="Antall sett"><NumAdj value={numSets} onChange={setNumSets} step={1} min={1}/></Row>
             <Row label="Min reps"><NumAdj value={minReps} onChange={setMinReps} step={1} min={1}/></Row>
             <Row label="Maal reps"><NumAdj value={maxReps} onChange={v=>setMaxReps(Math.max(minReps+1,v))} step={1} min={minReps+1}/></Row>
@@ -1155,7 +1180,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
         {form.type === "top_set" && (
           <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
             <div className="text-xs uppercase tracking-widest mb-1" style={{ color: C.muted }}>Top Set</div>
-            <Row label={form.addedWeight ? "Tilleggsvekt (kg)" : "Vekt (kg)"}><NumAdj value={form.topWeight} onChange={v => upd("topWeight", v)} step={form.increment || 2.5} /></Row>
+            <Row label={form.addedWeight ? "Tilleggsvekt (kg)" : "Vekt (kg)"}><NumAdj value={form.topWeight} onChange={v => upd("topWeight", v)} step={form.increment || 2.5} allowStepChange={true} /></Row>
             <Row label="Reps"><NumAdj value={form.topReps} onChange={v => upd("topReps", v)} step={1} min={1} /></Row>
             <Row label="Vektøkning per steg"><NumAdj value={form.increment} onChange={v => upd("increment", v)} step={1.25} min={1.25} /></Row>
             <Row label={`Suksess-teller (${form.successCount || 0}/3)`}>
@@ -1171,7 +1196,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
         {form.type === "rep_range" && (
           <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
             <div className="text-xs uppercase tracking-widest mb-1" style={{ color: C.muted }}>Rep Range</div>
-            {!form.bodyweight && <Row label="Vekt (kg)"><NumAdj value={form.weight} onChange={v => upd("weight", v)} step={2.5} min={0} /></Row>}
+            {!form.bodyweight && <Row label="Vekt (kg)"><NumAdj value={form.weight} onChange={v => upd("weight", v)} step={2.5} min={0} allowStepChange={true} /></Row>}
             <Row label="Antall sett"><NumAdj value={form.numSets} onChange={v => { const lr = [...form.lastReps]; while (lr.length < v) lr.push(form.minReps); while (lr.length > v) lr.pop(); setForm(f => ({ ...f, numSets: v, lastReps: lr })); }} step={1} min={1} /></Row>
             <Row label="Min reps"><NumAdj value={form.minReps} onChange={v => upd("minReps", v)} step={1} min={1} /></Row>
             <Row label="Max reps (mål)"><NumAdj value={form.maxReps} onChange={v => upd("maxReps", v)} step={1} min={form.minReps + 1} /></Row>
@@ -1181,7 +1206,14 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
         {form.type === "rep_range" && (
           <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
             <div className="text-xs uppercase tracking-widest mb-3" style={{ color: C.muted }}>Siste reps</div>
-            <div className="flex gap-3 justify-center">{form.lastReps.map((r, i) => <div key={i} className="flex flex-col items-center gap-2"><div className="text-xs" style={{ color: C.muted }}>S{i + 1}</div><NumAdj value={r} onChange={v => updRep(i, v)} step={1} min={0} /></div>)}</div>
+            <div className="flex gap-2">
+              {form.lastReps.map((r, i) => (
+                <div key={i} className="flex-1 flex flex-col items-center py-3 rounded-xl gap-2" style={{ background: C.inner, border: `1px solid ${C.border}` }}>
+                  <div className="text-xs font-bold" style={{ color: C.muted }}>S{i + 1}</div>
+                  <RepBtn value={r} onChange={v => updRep(i, v)} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1251,6 +1283,12 @@ export default function App() {
                 ? { id: "hip_thrust_m", name: "Hip Thrusts", type: "rep_range", weight: 60, numSets: 3, minReps: 6, maxReps: 10, lastReps: [8,8,8], increment: 5 }
                 : ex
             );
+          }
+          // Migrate: add Biceps Curls and Calves to Friday if missing
+          if (data.program.friday) {
+            const ids = data.program.friday.exercises.map(e => e.id);
+            if (!ids.includes("biceps_curl_f")) data.program.friday.exercises.push({ id: "biceps_curl_f", name: "Biceps Curls", type: "rep_range", weight: 12, numSets: 3, minReps: 6, maxReps: 12, lastReps: [8,8,8], increment: 1 });
+            if (!ids.includes("calves_f")) data.program.friday.exercises.push({ id: "calves_f", name: "Calves", type: "rep_range", weight: 90, numSets: 3, minReps: 8, maxReps: 14, lastReps: [10,10,10], increment: 5 });
           }
           setProgram(data.program);
           setLogs(data.logs || SEED_LOGS);
