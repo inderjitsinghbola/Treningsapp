@@ -31,13 +31,16 @@ function calcPlateGuide(topWeight, numDrops, approxDropPct, bar = 20) {
     const warmupPcts = [0, 0.60, 0.775, 0.925];
     const steps = [];
     let prevPS = 0;
+    let cumulativePlates = []; // track all plates on bar per side
     for (let i = 1; i < warmupPcts.length; i++) {
       const tgtW = Math.max(bar, R25(topWeight * warmupPcts[i]));
       const tgtPS = (tgtW - bar) / 2;
       const addPS = +(tgtPS - prevPS).toFixed(4);
       const plates = fillP(Math.max(0, addPS));
       if (plates.length > 0) {
-        const pct0 = Math.round(tgtW / topWeight * 100); const reps0 = pct0 < 65 ? '10–12' : pct0 < 80 ? '5–6' : pct0 < 90 ? '2–3' : '1'; steps.push({ add: plates, addTxt: platesTxt(plates), weight: bar + 2 * tgtPS, pct: pct0, reps: reps0 });
+        cumulativePlates = [...cumulativePlates, ...plates];
+        const pct0 = Math.round(tgtW / topWeight * 100); const reps0 = pct0 < 65 ? '10–12' : pct0 < 80 ? '5–6' : pct0 < 90 ? '2–3' : '1';
+        steps.push({ add: plates, addTxt: platesTxt(plates), weight: bar + 2 * tgtPS, pct: pct0, reps: reps0, plateStr: cumulativePlates.join("+") + " kg/side" });
         prevPS = tgtPS;
       }
     }
@@ -45,10 +48,10 @@ function calcPlateGuide(topWeight, numDrops, approxDropPct, bar = 20) {
     const finalAdd = +(perSide - prevPS).toFixed(4);
     if (finalAdd > 0.001) {
       const plates = fillP(finalAdd);
-      steps.push({ add: plates, addTxt: platesTxt(plates), weight: topWeight, pct: 100, isTop: true, reps: '4' });
+      cumulativePlates = [...cumulativePlates, ...plates]; steps.push({ add: plates, addTxt: platesTxt(plates), weight: topWeight, pct: 100, isTop: true, reps: '4', plateStr: cumulativePlates.join('+') + ' kg/side' });
     } else if (steps.length > 0) {
       steps[steps.length - 1].isTop = true; steps[steps.length - 1].reps = '4';
-      steps[steps.length - 1].weight = topWeight;
+      steps[steps.length - 1].weight = topWeight; steps[steps.length - 1].plateStr = cumulativePlates.join('+') + ' kg/side';
       steps[steps.length - 1].pct = 100;
     }
     return { warmupSteps: steps, dropSteps: [], adjustedDropWeights: [] };
@@ -211,39 +214,22 @@ const SEED_LOGS = [
   ]}
 ];
 
-// Storage — tries window.storage first, falls back to localStorage
+// Storage — localStorage only (standalone PWA)
 const STORAGE_KEY = "wt-v2";
 
 async function loadAll() {
-  // Try window.storage
-  try {
-    const r = await window.storage.get(STORAGE_KEY);
-    if (r && r.value) return JSON.parse(r.value);
-  } catch {}
-  // Fallback: localStorage
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return null;
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
 async function saveAll(data) {
-  const json = JSON.stringify(data);
-  let ok = false;
-  // Try window.storage
   try {
-    await window.storage.set(STORAGE_KEY, json);
-    ok = true;
-  } catch {}
-  // Always also try localStorage (belt and suspenders)
-  try {
-    localStorage.setItem(STORAGE_KEY, json);
-    ok = true;
-  } catch {}
-  return ok;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch { return false; }
 }
-
 function buildSession(ex) {
   if (ex.type === "top_set") {
     const guide = (!ex.addedWeight && ex.barWeight > 0)
@@ -261,11 +247,36 @@ function newSession(day, prog) { return { day, startedAt: new Date().toISOString
 function isExDone(ex) { if (ex.type === "top_set") return ex.confirmed && (ex.drops.length === 0 || ex.drops.every(d => d.confirmed)); if (ex.type === "rep_range") return ex.confirmed === true; if (ex.type === "checkbox") return ex.completed; return false; }
 function getAlerts(prog, day) { return prog[day].exercises.flatMap(ex => { if (ex.type === "top_set" && (ex.successCount || 0) >= 3) return [{ id: ex.id, name: ex.name, newW: ex.topWeight + ex.increment, inc: ex.increment }]; if (ex.type === "rep_range" && ex.increment > 0 && ex.lastReps.every(r => r >= ex.maxReps)) return [{ id: ex.id, name: ex.name, newW: ex.weight + ex.increment, inc: ex.increment }]; return []; }); }
 
-const C = { bg: "#0a0a0a", card: "#181818", inner: "#222222", border: "#333333", red: "#e53e3e", redDim: "#7f1d1d", orange: "#dd6b20", green: "#38a169", text: "#f7f7f7", muted: "#a0aec0", dim: "#4a5568" };
+const C = {
+  bg: "#1c1c1e",
+  card: "#2c2c2e",
+  inner: "#3a3a3c",
+  border: "#48484a",
+  red: "#ff3b30",
+  redDim: "#4a0a07",
+  orange: "#ff9500",
+  green: "#30d158",
+  blue: "#0a84ff",
+  text: "#ffffff",
+  muted: "#8e8e93",
+  dim: "#48484a",
+  accent: "#0a84ff",
+};
 
 function Btn({ onClick, children, color = "red", disabled = false, className = "" }) {
-  const bg = { red: C.red, gray: "#1e1e1e", green: C.green }[color] ?? C.red;
-  return <button onClick={onClick} disabled={disabled} className={`font-bold transition-all active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed ${className}`} style={{ background: bg, color: "#fff", border: color === "gray" ? `1px solid ${C.border}` : "none", cursor: disabled ? "not-allowed" : "pointer" }}>{children}</button>;
+  const styles = {
+    red: { background: C.blue, color: "#fff", border: "none" },
+    green: { background: C.green, color: "#000", border: "none" },
+    gray: { background: C.inner, color: C.muted, border: `1px solid ${C.border}` },
+  };
+  const s = styles[color] ?? styles.red;
+  return (
+    <button onClick={onClick} disabled={disabled}
+      className={`font-bold transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed ${className}`}
+      style={{ ...s, cursor: disabled ? "not-allowed" : "pointer", letterSpacing: "-0.01em" }}>
+      {children}
+    </button>
+  );
 }
 
 const STEPS = [0.5, 1, 2.5, 5, 10];
@@ -314,50 +325,108 @@ function PlateGuideCard({ guide }) {
   const [hidden, setHidden] = useState(false);
   if (!guide) return null;
   const { warmupSteps, dropSteps } = guide;
+  const totalSteps = warmupSteps.length + dropSteps.length;
 
   if (hidden) return (
-    <button onClick={() => setHidden(false)} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold mb-1 active:scale-95" style={{ background: "#0a0f1a", color: "#4a7099", border: "1px solid #1a2a3a" }}>
-      <Eye size={12} /> Vis lasteguide
+    <button onClick={() => setHidden(false)}
+      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold mb-2 active:scale-95"
+      style={{ background: "#0e1520", color: "#4a7099", border: "1px dashed #1e3a5a" }}>
+      <Eye size={12} /> Vis plateguide
     </button>
   );
 
+  // Visual barbell representation
+  const PlateVisual = ({ steps, highlight }) => {
+    const allPlates = [];
+    let cum = 0;
+    steps.forEach((s, si) => {
+      if (s.add) s.add.forEach(p => allPlates.push({ kg: p, step: si, isHighlight: si === highlight }));
+    });
+    const plateColor = p => p >= 20 ? "#e53e3e" : p >= 15 ? "#d69e2e" : p >= 10 ? "#3182ce" : p >= 5 ? "#38a169" : "#718096";
+    const plateH = p => p >= 20 ? 44 : p >= 10 ? 36 : p >= 5 ? 28 : 22;
+    const plateW = p => p >= 20 ? 14 : p >= 10 ? 12 : p >= 5 ? 10 : 8;
+    return (
+      <div className="flex items-center justify-center py-3 gap-0.5 overflow-hidden">
+        <div style={{ width: 32, height: 8, background: "#4a5568", borderRadius: 4 }} />
+        <div style={{ width: 6, height: 44, background: "#2d3748", borderRadius: 2 }} />
+        {allPlates.map((p, i) => (
+          <div key={i} style={{
+            width: plateW(p.kg), height: plateH(p.kg),
+            background: plateColor(p.kg),
+            borderRadius: 3,
+            opacity: p.isHighlight ? 1 : 0.35,
+            transition: "opacity 0.3s",
+            flexShrink: 0
+          }} />
+        ))}
+        <div style={{ width: 6, height: 44, background: "#2d3748", borderRadius: 2 }} />
+        <div style={{ width: 32, height: 8, background: "#4a5568", borderRadius: 4 }} />
+      </div>
+    );
+  };
+
   return (
-    <div className="rounded-xl overflow-hidden mb-1" style={{ border: "1px solid #1a2a3a" }}>
+    <div className="rounded-xl overflow-hidden mb-3" style={{ border: "1px solid #1e2a3a", background: "#0a0f18" }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5" style={{ background: "#0a0f1a" }}>
-        <span className="text-xs font-black uppercase tracking-widest" style={{ color: "#4a7099" }}>Lasteguide</span>
-        <button onClick={() => setHidden(true)} className="flex items-center gap-1 text-xs" style={{ color: "#2d4a6b" }}><EyeOff size={11} /> Skjul</button>
-      </div>
-
-      {/* Warmup section */}
-      <div className="px-4 pt-2.5 pb-1" style={{ background: "#080d14" }}>
-        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#1e3a5a" }}>↑ Legg på (innsiden → ut)</span>
-      </div>
-      {warmupSteps.map((s, i) => (
-        <div key={i} className="flex items-center px-4 py-2" style={{ background: "#080d14", borderTop: "1px solid #0d1a28" }}>
-          <span className="font-mono text-xs font-bold w-5 shrink-0" style={{ color: "#1a3050" }}>S{i + 1}</span>
-          <span className="font-mono font-bold text-sm ml-3" style={{ color: s.isTop ? "#e0e8f0" : "#5b8ab0" }}>{s.addTxt}</span>
-          <span className="font-mono text-sm font-bold ml-auto" style={{ color: s.isTop ? "#ffffff" : "#7aaac8" }}>{s.weight} kg</span>
-          <span className="font-mono text-xs ml-3 text-right" style={{ color: "#4a7099" }}>{s.reps} reps</span>
-          <span className="font-mono text-xs ml-2 w-16 text-right font-bold" style={{ color: s.isTop ? C.red : "#1e3a5a" }}>{s.isTop ? "▶ TOP" : `${s.pct}%`}</span>
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase tracking-widest" style={{ color: "#4a7099" }}>Plateguide</span>
+          <span className="font-mono text-xs px-2 py-0.5 rounded-full" style={{ background: "#1a2a3a", color: "#4a7099" }}>{totalSteps} steg</span>
         </div>
-      ))}
+        <button onClick={() => setHidden(true)} className="text-xs flex items-center gap-1 active:scale-95" style={{ color: "#2d4a6b" }}>
+          <EyeOff size={11} /> Skjul
+        </button>
+      </div>
 
-      {/* Drop section */}
-      {dropSteps.length > 0 && (
-        <>
-          <div className="px-4 pt-2.5 pb-1" style={{ background: "#0d0805", borderTop: "1px solid #1a2a3a" }}>
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: "#5a2a10" }}>↓ Fjern (utsiden → inn)</span>
+      {/* Loading steps */}
+      {warmupSteps.length > 0 && (
+        <div style={{ borderTop: "1px solid #1a2530" }}>
+          <div className="px-4 py-2" style={{ background: "#080d14" }}>
+            <span className="text-xs font-black uppercase tracking-widest" style={{ color: "#2a5070" }}>↑ Last opp — innsiden ut</span>
           </div>
-          {dropSteps.map((d, i) => (
-            <div key={i} className="flex items-center px-4 py-2" style={{ background: "#0a0603", borderTop: "1px solid #120804" }}>
-              <span className="text-xs font-black uppercase w-16 shrink-0" style={{ color: C.orange }}>DROP {i + 1}</span>
-              <span className="font-mono text-sm font-bold ml-2" style={{ color: "#e07040" }}>−{d.remove} kg/side</span>
-              <span className="font-mono text-sm font-bold ml-auto" style={{ color: C.text }}>{d.weight} kg</span>
-              <span className="font-mono text-xs ml-3 w-10 text-right" style={{ color: "#7a3010" }}>−{d.pct}%</span>
+          {warmupSteps.map((s, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3" style={{ background: i % 2 === 0 ? "#070c12" : "#080e15", borderTop: "1px solid #0f1a24" }}>
+              <div className="flex items-center justify-center shrink-0 font-mono font-black text-xs" style={{
+                width: 28, height: 28, borderRadius: 8,
+                background: s.isTop ? C.red : "#1a2a3a",
+                color: s.isTop ? "#fff" : "#4a7099"
+              }}>{s.isTop ? "▶" : `S${i+1}`}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-mono font-black text-sm" style={{ color: s.isTop ? C.text : "#7aaac8" }}>{s.addTxt}</div>
+                <div className="font-mono text-xs mt-0.5" style={{ color: "#2d4a6b" }}>{s.reps} reps · {s.pct}%</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-mono font-black" style={{ color: s.isTop ? "#fff" : "#4a7099", fontSize: s.isTop ? 18 : 15 }}>{s.weight}</div>
+                <div className="font-mono text-xs" style={{ color: "#1e3a5a" }}>kg</div>
+              </div>
             </div>
           ))}
-        </>
+        </div>
+      )}
+
+      {/* Drop steps */}
+      {dropSteps.length > 0 && (
+        <div style={{ borderTop: "1px solid #2a1a10" }}>
+          <div className="px-4 py-2" style={{ background: "#100804" }}>
+            <span className="text-xs font-black uppercase tracking-widest" style={{ color: "#6b3010" }}>↓ Strip — utsiden inn</span>
+          </div>
+          {dropSteps.map((d, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3" style={{ background: "#0a0603", borderTop: "1px solid #180c06" }}>
+              <div className="flex items-center justify-center shrink-0 font-mono font-black text-xs" style={{
+                width: 28, height: 28, borderRadius: 8,
+                background: "#2a1008", color: C.orange
+              }}>D{i+1}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-mono font-black text-sm" style={{ color: "#e07040" }}>−{d.remove} kg/side</div>
+                <div className="font-mono text-xs mt-0.5" style={{ color: "#5a2a10" }}>−{d.pct}% av forrige</div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="font-mono font-black text-lg" style={{ color: C.orange }}>{d.weight}</div>
+                <div className="font-mono text-xs" style={{ color: "#5a2a10" }}>kg</div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -509,7 +578,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
 
   if (summary) return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, background: C.bg, borderBottom: `1px solid ${C.border}`, paddingTop: "max(12px, env(safe-area-inset-top))", paddingBottom: 12, paddingLeft: 16, paddingRight: 16 }}>
         <div className="max-w-lg mx-auto flex items-center gap-3"><button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button><span className="font-black text-lg">Økt fullført</span></div>
       </div>
       <div className="max-w-lg mx-auto p-4 space-y-4" style={{ paddingTop: 20 }}>
@@ -532,7 +601,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
 
   return (
     <div className="min-h-screen" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0" style={{ zIndex: 50, background: C.bg + "f2", borderBottom: `1px solid ${C.border}`, paddingTop: "env(safe-area-inset-top)" }}>
+      <div className="sticky top-0" style={{ zIndex: 50, background: C.bg + "f2", borderBottom: `1px solid ${C.border}`, }}>
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center gap-3 mb-2">
             <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -562,7 +631,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
           );
         })}
       </div>
-      <div className="fixed bottom-0 left-0 right-0 p-4" style={{ background: C.bg + "f5", borderTop: `1px solid ${C.border}` }}>
+      <div className="fixed bottom-0 left-0 right-0" style={{ background: C.bg + "f5", borderTop: `1px solid ${C.border}`, padding: "12px 16px", paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
         <div className="max-w-lg mx-auto flex gap-2">
           {!allDone && (
             <button onClick={() => setSummary(true)} className="px-4 py-4 rounded-xl font-bold text-sm active:scale-95 shrink-0"
@@ -587,7 +656,7 @@ function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
   const ready = url.length > 20;
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50, background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
           <span className="font-black text-lg">Innstillinger</span>
@@ -633,69 +702,94 @@ function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
 function HomeView({ program, logs, session, saveStatus, onStart, onContinue, onAbandon, onProgram, onHistory, onProgression, onSettings }) {
   const lastFor = day => logs.find(l => l.day === day);
   const elapsed = useElapsed(session?.startedAt);
+  const days = ["monday", "wednesday", "friday"];
   return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="max-w-lg mx-auto px-4 pt-8 pb-4">
-        <div className="flex items-center justify-between mb-8">
-          <div><div className="font-black text-3xl" style={{ letterSpacing: "-0.04em" }}>TRAINING LOG</div><div className="font-mono text-xs mt-1" style={{ color: C.muted }}>UKE {weekNum()}</div></div>
-          <div className="flex items-center gap-2">
-            {saveStatus === "saving" && <span className="font-mono text-xs" style={{ color: C.muted }}>lagrer…</span>}
-            {saveStatus === "saved" && <span className="font-mono text-xs" style={{ color: C.green }}>✓ lagret</span>}
-            {saveStatus === "error" && <span className="font-mono text-xs" style={{ color: C.red }}>! lagringsfeil</span>}
-            <button onClick={onSettings} className="p-1.5 rounded-lg" style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}><Settings size={15} /></button>
-            <div className="w-2 h-2 rounded-full" style={{ background: C.red, boxShadow: `0 0 10px ${C.red}` }} />
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, paddingBottom: "max(24px, env(safe-area-inset-bottom))" }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", padding: "0 16px" }}>
+
+        {/* Header */}
+        <div style={{ padding: "max(16px, env(safe-area-inset-top)) 0 16px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", color: C.text }}>Training Log</div>
+            <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Uke {weekNum()}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {saveStatus === "saving" && <span style={{ fontSize: 11, color: C.muted }}>lagrer…</span>}
+            {saveStatus === "saved" && <span style={{ fontSize: 11, color: C.green }}>✓</span>}
+            {saveStatus === "error" && <span style={{ fontSize: 11, color: C.red }}>!</span>}
+            <button onClick={onSettings} style={{ width: 34, height: 34, borderRadius: 10, background: C.card, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, cursor: "pointer" }}>
+              <Settings size={15} />
+            </button>
           </div>
         </div>
+
+        {/* Active session banner */}
         {session && (
-          <div className="rounded-xl overflow-hidden mb-5" style={{ border: `1px solid ${C.red}66` }}>
-            {/* Pulsing top bar */}
-            <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${C.red}, #ff6b6b, ${C.red})`, backgroundSize: "200%", animation: "pulse 2s ease-in-out infinite" }} />
-            <div className="px-4 py-4" style={{ background: "#160404" }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ background: C.red, boxShadow: `0 0 6px ${C.red}` }} />
-                  <span className="font-black text-sm uppercase tracking-wide" style={{ color: C.red }}>Økt pågår</span>
+          <div style={{ background: "#0a1929", border: `1px solid ${C.blue}33`, borderRadius: 16, overflow: "hidden", marginBottom: 20 }}>
+            <div style={{ height: 3, background: `linear-gradient(90deg, ${C.blue}, #34aadc)` }} />
+            <div style={{ padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.blue, boxShadow: `0 0 6px ${C.blue}` }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.blue }}>Økt pågår</span>
                 </div>
-                <span className="font-mono font-black text-xl" style={{ color: C.text }}>{fmtElapsed(elapsed)}</span>
+                <span style={{ fontSize: 22, fontWeight: 800, color: C.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.03em" }}>{fmtElapsed(elapsed)}</span>
               </div>
-              <div className="mb-3">
-                <div className="font-black text-lg">{program[session.day].label}</div>
-                <div className="text-sm" style={{ color: C.muted }}>{program[session.day].sub}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: C.text, letterSpacing: "-0.02em", marginBottom: 2 }}>{program[session.day].label}</div>
+              <div style={{ fontSize: 13, color: C.muted, marginBottom: 10 }}>{program[session.day].sub}</div>
+              <div style={{ height: 4, background: C.inner, borderRadius: 2, marginBottom: 6 }}>
+                <div style={{ height: "100%", width: `${(session.exercises.filter(isExDone).length / session.exercises.length) * 100}%`, background: C.blue, borderRadius: 2, transition: "width 0.4s ease" }} />
               </div>
-              {/* Progress bar */}
-              <div className="h-1.5 rounded-full mb-3" style={{ background: C.inner }}>
-                <div className="h-full rounded-full transition-all" style={{ width: `${(session.exercises.filter(isExDone).length / session.exercises.length) * 100}%`, background: C.red }} />
-              </div>
-              <div className="text-xs mb-3" style={{ color: C.muted }}>
-                {session.exercises.filter(isExDone).length} av {session.exercises.length} øvelser fullført
-              </div>
-              <div className="flex gap-2">
+              <div style={{ fontSize: 11, color: C.muted, marginBottom: 12 }}>{session.exercises.filter(isExDone).length} av {session.exercises.length} øvelser</div>
+              <div style={{ display: "flex", gap: 8 }}>
                 <Btn onClick={onContinue} color="red" className="flex-1 py-3 rounded-xl text-sm">Fortsett økt →</Btn>
-                <button onClick={onAbandon} className="px-4 py-3 rounded-xl text-xs font-semibold" style={{ background: C.inner, color: C.muted, border: `1px solid ${C.border}` }}>Forkast</button>
+                <button onClick={onAbandon} style={{ padding: "10px 14px", borderRadius: 12, fontSize: 12, fontWeight: 600, background: C.inner, color: C.muted, border: `1px solid ${C.border}`, cursor: "pointer" }}>Avslutt</button>
               </div>
             </div>
           </div>
         )}
-        <div className="space-y-3 mb-6">
-          {["monday", "wednesday", "friday"].map(day => {
-            const d = program[day], last = lastFor(day), alerts = getAlerts(program, day), isActive = session?.day === day, blocked = !!session && !isActive;
+
+        {/* Workout cards */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {days.map(day => {
+            const d = program[day], last = lastFor(day), alerts = getAlerts(program, day);
+            const isActive = session?.day === day, blocked = !!session && !isActive;
             return (
-              <div key={day} className="rounded-xl overflow-hidden" style={{ background: C.card, border: `1px solid ${isActive ? C.red + "99" : C.border}` }}>
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div><div className="font-black text-xl">{d.label}</div><div className="text-sm" style={{ color: C.muted }}>{d.sub}</div></div>
-                    <div className="text-right">{last ? <div className="flex items-center gap-1.5 text-xs" style={{ color: C.muted }}><Clock size={11} />{fmtDate(last.startedAt)}</div> : <div className="text-xs" style={{ color: C.dim }}>Ingen logger</div>}<div className="font-mono text-xs mt-1" style={{ color: C.dim }}>{d.exercises.length} øvelser</div></div>
+              <div key={day} style={{ background: C.card, border: `1px solid ${isActive ? C.blue + "55" : C.border}`, borderRadius: 16, overflow: "hidden", position: "relative" }}>
+                {isActive && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: C.blue }} />}
+                <div style={{ padding: "14px 16px", paddingLeft: isActive ? 20 : 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: C.text, letterSpacing: "-0.02em" }}>{d.label}</div>
+                      <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{d.sub}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      {last ? <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: C.muted }}><Clock size={10} />{fmtDate(last.startedAt)}</div>
+                        : <div style={{ fontSize: 11, color: C.dim }}>Ikke logget</div>}
+                      <div style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>{d.exercises.length} øvelser</div>
+                    </div>
                   </div>
-                  {alerts.length > 0 && <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ background: "#021207", border: "1px solid #14532d", color: "#4ade80" }}><TrendingUp size={13} /><span className="text-xs font-semibold">{alerts.length} øvelse{alerts.length > 1 ? "r" : ""} klar for vektøkning</span></div>}
-                  <Btn onClick={isActive ? onContinue : () => onStart(day)} color={blocked ? "gray" : "red"} disabled={blocked} className="w-full py-3 rounded-xl text-sm">{isActive ? "Fortsett økt" : blocked ? "Annen økt pågår" : "Start økt"}</Btn>
+                  {alerts.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", borderRadius: 10, marginBottom: 10, background: C.green + "15", border: `1px solid ${C.green}30` }}>
+                      <TrendingUp size={12} style={{ color: C.green }} />
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.green }}>{alerts.length} øvelse{alerts.length > 1 ? "r" : ""} klar for økning</span>
+                    </div>
+                  )}
+                  <Btn onClick={isActive ? onContinue : () => onStart(day)} color={blocked ? "gray" : "red"} disabled={blocked} className="w-full py-3 rounded-xl text-sm">
+                    {isActive ? "Fortsett økt" : blocked ? "Annen økt pågår" : "Start økt"}
+                  </Btn>
                 </div>
               </div>
             );
           })}
         </div>
-        <div className="grid grid-cols-3 gap-2">
-          {[["Program", <List size={15} />, onProgram], ["Historikk", <Clock size={15} />, onHistory], ["Progresjon", <TrendingUp size={15} />, onProgression]].map(([lbl, icon, fn]) => (
-            <button key={lbl} onClick={fn} className="flex items-center justify-center gap-1.5 py-3 rounded-xl font-semibold text-xs active:scale-95" style={{ background: C.card, color: C.muted, border: `1px solid ${C.border}` }}>{icon}{lbl}</button>
+
+        {/* Nav */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+          {[[<List size={18} />, "Program", onProgram], [<Clock size={18} />, "Historikk", onHistory], [<TrendingUp size={18} />, "Progresjon", onProgression]].map(([icon, lbl, fn]) => (
+            <button key={lbl} onClick={fn} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "14px 8px", borderRadius: 14, background: C.card, color: C.muted, border: `1px solid ${C.border}`, cursor: "pointer", fontSize: 11, fontWeight: 600 }}>
+              {icon}{lbl}
+            </button>
           ))}
         </div>
       </div>
@@ -710,7 +804,7 @@ function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
 
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -808,7 +902,7 @@ function HistoryView({ logs, program, onBack, onDeleteLog, onConfirmDelete }) {
   const filtered = filter === "all" ? logs : logs.filter(l => l.day === filter);
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
           <span className="font-black text-lg">Historikk</span>
@@ -876,15 +970,108 @@ function HistoryView({ logs, program, onBack, onDeleteLog, onConfirmDelete }) {
 }
 
 // ─── PROGRESSION VIEW ─────────────────────────────────────────────────────────
+// Muscle group mapping
+const MUSCLE_MAP = {
+  bench: ["Bryst","Triceps","Foran delts"],
+  deadlift: ["Rygg","Gluteus","Hamstrings"],
+  hip_thrust_m: ["Gluteus","Hamstrings"],
+  cable_row: ["Rygg","Biceps"],
+  lat_m: ["Side delts"], lat_f: ["Side delts"],
+  tri_push: ["Triceps"],
+  calves: ["Legg"], calves_f: ["Legg"],
+  squat: ["Quadriceps","Gluteus"],
+  leg_curl_w: ["Hamstrings"],
+  dips: ["Bryst","Triceps"],
+  ohp: ["Delts","Triceps"],
+  pullups_bw: ["Rygg","Biceps"],
+  face_pulls: ["Bak delts"],
+  wpullups: ["Rygg","Biceps"],
+  cs_row: ["Rygg","Biceps"],
+  bss: ["Quadriceps","Gluteus"],
+  incline_db: ["Bryst","Foran delts"],
+  biceps_curl_f: ["Biceps"],
+};
+
+function MiniChart({ points, field, color, height = 48 }) {
+  if (!points || points.length < 2) return null;
+  const vals = points.map(p => p[field]).filter(v => v != null && !isNaN(v));
+  if (vals.length < 2) return null;
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = max - min || 1;
+  const w = 180, h = height, pad = 4;
+  const pts = vals.map((v, i) => {
+    const x = pad + (i / (vals.length - 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / range) * (h - pad * 2);
+    return [x, y];
+  });
+  const path = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(" ");
+  const areaPath = path + ` L${pts[pts.length-1][0]},${h} L${pts[0][0]},${h} Z`;
+  return (
+    <svg width={w} height={h} style={{ overflow: "visible" }}>
+      <defs>
+        <linearGradient id={"g"+field} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#g${field})`} />
+      <path d={path} stroke={color} strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p[0]} cy={p[1]} r={i === pts.length - 1 ? 3 : 1.5}
+          fill={i === pts.length - 1 ? color : color + "88"} />
+      ))}
+    </svg>
+  );
+}
+
+function VolumeChart({ logs, program }) {
+  // Count sets per muscle group from last 4 weeks
+  const cutoff = Date.now() - 28 * 24 * 3600 * 1000;
+  const setsByMuscle = {};
+  logs.filter(l => new Date(l.startedAt).getTime() > cutoff).forEach(log => {
+    const d = program[log.day];
+    if (!d) return;
+    log.exercises.forEach(ex => {
+      const muscles = MUSCLE_MAP[ex.id] || [];
+      let sets = 0;
+      if (ex.type === "top_set" && ex.confirmed) sets = 1 + (ex.drops || []).filter(d => d.confirmed).length;
+      else if (ex.type === "rep_range") sets = (ex.reps || []).length;
+      muscles.forEach(m => { setsByMuscle[m] = (setsByMuscle[m] || 0) + sets; });
+    });
+  });
+  const entries = Object.entries(setsByMuscle).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return <div className="text-center py-8 text-sm" style={{ color: C.muted }}>Logg noen økter for å se volum.</div>;
+  const maxSets = entries[0][1];
+  const colors = ["#e53e3e","#dd6b20","#d69e2e","#38a169","#3182ce","#805ad5","#d53f8c","#00b5d8"];
+  return (
+    <div className="space-y-2">
+      {entries.map(([muscle, sets], i) => (
+        <div key={muscle}>
+          <div className="flex justify-between mb-1">
+            <span className="text-sm font-semibold">{muscle}</span>
+            <span className="font-mono text-sm font-bold" style={{ color: colors[i % colors.length] }}>{sets} sett</span>
+          </div>
+          <div className="h-2 rounded-full" style={{ background: C.inner }}>
+            <div className="h-full rounded-full transition-all" style={{ width: `${(sets/maxSets)*100}%`, background: colors[i % colors.length] }} />
+          </div>
+        </div>
+      ))}
+      <div className="text-xs mt-2" style={{ color: C.dim }}>Siste 4 uker</div>
+    </div>
+  );
+}
+
 function ProgressionView({ logs, program, onBack }) {
   const days = ["monday", "wednesday", "friday"];
   const [selDay, setSelDay] = useState("monday");
   const [selEx, setSelEx] = useState(null);
+  const [tab, setTab] = useState("exercises"); // "exercises" | "volume"
 
-  // Build per-exercise history from logs
+  // Build per-exercise history
   const exHistory = {};
   [...logs].reverse().forEach(log => {
     const d = program[log.day];
+    if (!d) return;
     log.exercises.forEach(ex => {
       const cfg = d.exercises.find(e => e.id === ex.id); if (!cfg) return;
       if (ex.type === "checkbox") return;
@@ -893,142 +1080,165 @@ function ProgressionView({ logs, program, onBack }) {
       if (ex.type === "top_set" && ex.confirmed) {
         exHistory[ex.id].points.push({ date, weight: ex.topWeight, reps: ex.actualReps });
       } else if (ex.type === "rep_range") {
-        const total = (ex.reps || []).reduce((a, b) => a + b, 0);
-        const avg = ex.reps.length ? Math.round(total / ex.reps.length * 10) / 10 : 0;
-        exHistory[ex.id].points.push({ date, weight: ex.bodyweight ? 0 : ex.weight, reps: avg, repsRaw: ex.reps });
+        const reps = ex.reps || [];
+        const avg = reps.length ? Math.round(reps.reduce((a,b)=>a+b,0) / reps.length * 10) / 10 : 0;
+        const total = reps.reduce((a,b)=>a+b,0);
+        exHistory[ex.id].points.push({ date, weight: ex.bodyweight ? 0 : ex.weight, reps: avg, total, repsRaw: reps });
       }
     });
   });
 
   const dayExercises = program[selDay].exercises.filter(e => e.type !== "checkbox");
   const selected = selEx ? exHistory[selEx] : null;
-  const selCfg = selEx ? program[selDay].exercises.find(e => e.id === selEx) : null;
-
-  // Mini sparkline using divs
-  function Sparkline({ points, field, color }) {
-    if (!points || points.length < 2) return null;
-    const vals = points.map(p => p[field]).filter(v => v != null && !isNaN(v));
-    if (vals.length < 2) return null;
-    const min = Math.min(...vals), max = Math.max(...vals);
-    const range = max - min || 1;
-    return (
-      <div className="flex items-end gap-0.5 h-8">
-        {points.map((p, i) => {
-          const v = p[field]; if (v == null || isNaN(v)) return null;
-          const h = Math.max(4, Math.round(((v - min) / range) * 28) + 4);
-          const isLast = i === points.length - 1;
-          return <div key={i} style={{ width: 6, height: h, background: isLast ? color : color + "66", borderRadius: 2, flexShrink: 0 }} />;
-        })}
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={selEx ? () => setSelEx(null) : onBack} className="p-2 rounded-xl" style={{ background: C.card }}>
             <ArrowLeft size={20} />
           </button>
-          <span className="font-black text-lg">{selEx ? (selected?.name || "Progresjon") : "Progresjon"}</span>
+          <span className="font-black text-lg flex-1">{selEx ? (selected?.name || "Progresjon") : "Progresjon"}</span>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto p-4">
         {!selEx ? (
           <>
-            {/* Day tabs */}
-            <div className="flex gap-2 mb-4">
-              {days.map((day, i) => (
-                <button key={day} onClick={() => { setSelDay(day); setSelEx(null); }}
-                  className="px-3 py-1.5 rounded-lg text-sm font-semibold active:scale-95"
-                  style={{ background: selDay === day ? C.red : C.card, color: "#fff", border: `1px solid ${C.border}` }}>
-                  {["A","B","C"][i]}
+            {/* Tab bar */}
+            <div className="flex gap-2 mb-4 p-1 rounded-xl" style={{ background: C.inner }}>
+              {[["exercises","Øvelser"],["volume","Volum"]].map(([id, label]) => (
+                <button key={id} onClick={() => setTab(id)}
+                  className="flex-1 py-2 rounded-lg text-sm font-bold transition-all"
+                  style={{ background: tab === id ? C.card : "transparent", color: tab === id ? C.text : C.muted }}>
+                  {label}
                 </button>
               ))}
             </div>
 
-            {/* Exercise list with mini sparklines */}
-            <div className="space-y-2">
-              {dayExercises.map(cfg => {
-                const hist = exHistory[cfg.id];
-                const pts = hist?.points || [];
-                const latest = pts[pts.length - 1];
-                const first = pts[0];
-                const improved = latest && first && latest.weight > first.weight;
-                return (
-                  <button key={cfg.id} onClick={() => setSelEx(cfg.id)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl active:scale-95 transition-all"
-                    style={{ background: C.card, border: `1px solid ${C.border}` }}>
-                    <div className="text-left mr-3 flex-1 min-w-0">
-                      <div className="font-bold text-sm truncate">{cfg.name}</div>
-                      <div className="font-mono text-xs mt-0.5" style={{ color: C.muted }}>
-                        {pts.length === 0 && "Ingen data ennå"}
-                        {pts.length > 0 && cfg.bodyweight && `BW · sist ${latest.reps} reps snitt`}
-                        {pts.length > 0 && !cfg.bodyweight && `${latest.weight}kg · ${pts.length} økter logget`}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {pts.length >= 2 && <Sparkline points={pts} field="weight" color={improved ? C.green : C.muted} />}
-                      {improved && <TrendingUp size={14} style={{ color: C.green }} />}
-                      <ChevronRight size={16} style={{ color: C.dim }} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+            {tab === "volume" ? (
+              <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                <div className="text-xs uppercase tracking-widest mb-4 font-bold" style={{ color: C.muted }}>Sett per muskelgruppe</div>
+                <VolumeChart logs={logs} program={program} />
+              </div>
+            ) : (
+              <>
+                {/* Day tabs */}
+                <div className="flex gap-2 mb-4">
+                  {days.map((day, i) => (
+                    <button key={day} onClick={() => { setSelDay(day); setSelEx(null); }}
+                      className="px-4 py-1.5 rounded-lg text-sm font-bold"
+                      style={{ background: selDay === day ? C.red : C.card, color: "#fff", border: `1px solid ${C.border}` }}>
+                      {["A","B","C"][i]}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Exercise list */}
+                <div className="space-y-2">
+                  {dayExercises.map(cfg => {
+                    const hist = exHistory[cfg.id];
+                    const pts = hist?.points || [];
+                    const latest = pts[pts.length - 1];
+                    const first = pts[0];
+                    const isTopSet = cfg.type === "top_set";
+                    const weightDiff = latest && first ? +(latest.weight - first.weight).toFixed(1) : 0;
+                    const repsDiff = latest && first && !isTopSet ? +(latest.reps - first.reps).toFixed(1) : 0;
+                    const improved = weightDiff > 0 || repsDiff > 0;
+                    return (
+                      <button key={cfg.id} onClick={() => setSelEx(cfg.id)}
+                        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-left"
+                        style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                        <div className="flex-1 min-w-0 mr-3">
+                          <div className="font-bold text-sm truncate">{cfg.name}</div>
+                          <div className="font-mono text-xs mt-0.5" style={{ color: C.muted }}>
+                            {pts.length === 0 && "Ingen data ennå"}
+                            {pts.length > 0 && !cfg.bodyweight && (
+                              isTopSet
+                                ? `${latest.weight}kg × ${latest.reps}r · ${pts.length} økter`
+                                : `${latest.weight}kg · snitt ${latest.reps}r · ${pts.length} økter`
+                            )}
+                            {pts.length > 0 && cfg.bodyweight && `BW · snitt ${latest.reps}r · ${pts.length} økter`}
+                          </div>
+                          {pts.length >= 2 && (weightDiff !== 0 || repsDiff !== 0) && (
+                            <div className="flex gap-3 mt-1">
+                              {!cfg.bodyweight && weightDiff !== 0 && (
+                                <span className="text-xs font-bold" style={{ color: weightDiff > 0 ? C.green : C.red }}>
+                                  {weightDiff > 0 ? "+" : ""}{weightDiff}kg
+                                </span>
+                              )}
+                              {!isTopSet && repsDiff !== 0 && (
+                                <span className="text-xs font-bold" style={{ color: repsDiff > 0 ? C.green : C.red }}>
+                                  {repsDiff > 0 ? "+" : ""}{repsDiff}r snitt
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {pts.length >= 2 && <MiniChart points={pts} field={cfg.bodyweight ? "reps" : "weight"} color={improved ? C.green : C.muted} height={36} />}
+                          <ChevronRight size={16} style={{ color: C.dim }} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </>
         ) : (
-          /* Detail view for one exercise */
+          /* Detail view */
           selected && (
             <div className="space-y-4">
               {selected.points.length === 0 ? (
                 <div className="text-center py-16 text-sm" style={{ color: C.muted }}>Ingen data logget ennå.</div>
               ) : (
                 <>
-                  {/* Summary stats */}
-                  {!selected.bodyweight && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        ["Start", selected.points[0].weight + " kg"],
-                        ["Nå", selected.points[selected.points.length - 1].weight + " kg"],
-                        ["Økt", "+" + Math.max(0, selected.points[selected.points.length - 1].weight - selected.points[0].weight).toFixed(1) + " kg"],
-                      ].map(([label, val]) => (
-                        <div key={label} className="rounded-xl p-3 text-center" style={{ background: C.card, border: `1px solid ${C.border}` }}>
-                          <div className="font-mono font-black text-lg" style={{ color: C.text }}>{val}</div>
-                          <div className="text-xs mt-1" style={{ color: C.muted }}>{label}</div>
-                        </div>
-                      ))}
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {selected.type === "top_set" ? [
+                      ["Start", selected.points[0].weight + " kg"],
+                      ["Nå", selected.points[selected.points.length-1].weight + " kg"],
+                      ["Økt", (weightDiff => (weightDiff > 0 ? "+" : "") + weightDiff + " kg")(+(selected.points[selected.points.length-1].weight - selected.points[0].weight).toFixed(1))],
+                    ] : [
+                      ["Vekt nå", selected.bodyweight ? "BW" : selected.points[selected.points.length-1].weight + " kg"],
+                      ["Rep snitt", selected.points[selected.points.length-1].reps + ""],
+                      ["Vol nå", (selected.points[selected.points.length-1].total || 0) + " reps"],
+                    ].map(([label, val]) => (
+                      <div key={label} className="rounded-xl p-3 text-center" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                        <div className="font-mono font-black text-lg" style={{ color: C.text }}>{val}</div>
+                        <div className="text-xs mt-1" style={{ color: C.muted }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Weight chart */}
+                  {!selected.bodyweight && selected.points.length >= 2 && (
+                    <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                      <div className="text-xs uppercase tracking-widest mb-3 font-bold" style={{ color: C.muted }}>Vekt</div>
+                      <div className="flex justify-center">
+                        <MiniChart points={selected.points} field="weight" color={C.red} height={80} />
+                      </div>
+                      <div className="flex justify-between mt-2">
+                        <span className="font-mono text-xs" style={{ color: C.dim }}>{selected.points[0].date}</span>
+                        <span className="font-mono text-xs" style={{ color: C.dim }}>{selected.points[selected.points.length-1].date}</span>
+                      </div>
                     </div>
                   )}
 
-                  {/* Visual bar chart of weight */}
-                  {!selected.bodyweight && selected.points.length >= 2 && (() => {
-                    const weights = selected.points.map(p => p.weight);
-                    const minW = Math.min(...weights), maxW = Math.max(...weights);
-                    const range = maxW - minW || 1;
-                    return (
-                      <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
-                        <div className="text-xs uppercase tracking-widest mb-3 font-bold" style={{ color: C.muted }}>Vektutvikling</div>
-                        <div className="flex items-end gap-1 h-24">
-                          {selected.points.map((p, i) => {
-                            const h = Math.max(8, Math.round(((p.weight - minW) / range) * 80) + 8);
-                            const isLast = i === selected.points.length - 1;
-                            return (
-                              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                                {isLast && <span className="font-mono text-xs font-bold" style={{ color: C.green }}>{p.weight}</span>}
-                                <div style={{ height: h, background: isLast ? C.green : C.red + "55", borderRadius: "3px 3px 0 0", width: "100%" }} />
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="flex justify-between mt-1">
-                          <span className="font-mono text-xs" style={{ color: C.dim }}>{selected.points[0].date}</span>
-                          <span className="font-mono text-xs" style={{ color: C.dim }}>{selected.points[selected.points.length - 1].date}</span>
-                        </div>
+                  {/* Reps chart for rep_range */}
+                  {selected.type === "rep_range" && selected.points.length >= 2 && (
+                    <div className="rounded-xl p-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                      <div className="text-xs uppercase tracking-widest mb-3 font-bold" style={{ color: C.muted }}>Reps (snitt per økt)</div>
+                      <div className="flex justify-center">
+                        <MiniChart points={selected.points} field="reps" color={C.green} height={80} />
                       </div>
-                    );
-                  })()}
+                      <div className="flex justify-between mt-2">
+                        <span className="font-mono text-xs" style={{ color: C.dim }}>{selected.points[0].date}</span>
+                        <span className="font-mono text-xs" style={{ color: C.dim }}>{selected.points[selected.points.length-1].date}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Log table */}
                   <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.border}` }}>
@@ -1038,12 +1248,14 @@ function ProgressionView({ logs, program, onBack }) {
                     {[...selected.points].reverse().map((p, i) => (
                       <div key={i} className="flex items-center justify-between px-4 py-3" style={{ background: C.card, borderTop: `1px solid ${C.border}` }}>
                         <span className="font-mono text-xs" style={{ color: C.muted }}>{p.date}</span>
-                        <div className="text-right">
+                        <div className="flex items-center gap-3">
                           {!selected.bodyweight && <span className="font-mono font-bold text-sm" style={{ color: C.text }}>{p.weight} kg</span>}
-                          {selected.bodyweight && <span className="font-mono font-bold text-sm" style={{ color: C.text }}>BW</span>}
-                          <span className="font-mono text-xs ml-3" style={{ color: C.muted }}>
-                            {selected.type === "top_set" ? `×${p.reps} reps` : p.repsRaw ? p.repsRaw.join("/") : `snitt ${p.reps}`}
+                          <span className="font-mono text-xs" style={{ color: C.muted }}>
+                            {selected.type === "top_set" ? `× ${p.reps} reps` : p.repsRaw ? p.repsRaw.join("/") : `snitt ${p.reps}`}
                           </span>
+                          {selected.type === "rep_range" && p.total != null && (
+                            <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: C.inner, color: C.dim }}>{p.total} tot</span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1054,10 +1266,10 @@ function ProgressionView({ logs, program, onBack }) {
           )
         )}
       </div>
-
     </div>
   );
 }
+
 
 // ─── ADD EXERCISE VIEW ────────────────────────────────────────────────────────
 function AddExerciseView({ day, program, onSave, onBack }) {
@@ -1097,7 +1309,7 @@ function AddExerciseView({ day, program, onSave, onBack }) {
 
   return (
     <div className="min-h-screen pb-8" style={{background:C.bg, color:C.text}}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{background:C.bg, borderBottom:`1px solid ${C.border}`, zIndex: 50}}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{background:C.card}}><X size={20}/></button>
           <span className="font-black text-lg flex-1">Ny oevelse</span>
@@ -1165,7 +1377,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
   const Row = ({ label, children }) => <div className="flex items-center justify-between py-3" style={{ borderBottom: `1px solid ${C.border}` }}><span className="text-sm" style={{ color: C.muted }}>{label}</span>{children}</div>;
   return (
     <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
-      <div className="sticky top-0 z-10 px-4 py-3" style={{ paddingTop: "max(12px, env(safe-area-inset-top))", zIndex: 50 }} style={{ background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><X size={20} /></button>
           <span className="font-black text-lg flex-1 truncate">{orig.name}</span>
@@ -1231,7 +1443,15 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState("");
   const [syncStatus, setSyncStatus] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(null); // "" | "syncing" | "ok" | "fail"
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  // Refs to always have latest state in async/closure contexts
+  const programRef = React.useRef(program);
+  const logsRef = React.useRef(logs);
+  const sessionRef = React.useRef(session);
+  React.useEffect(() => { programRef.current = program; }, [program]);
+  React.useEffect(() => { logsRef.current = logs; }, [logs]);
+  React.useEffect(() => { sessionRef.current = session; }, [session]); // "" | "syncing" | "ok" | "fail"
 
   const getGsUrl = () => { try { return localStorage.getItem("wt-gs-url") || ""; } catch { return ""; } };
 
@@ -1240,13 +1460,19 @@ export default function App() {
     if (!url) return;
     setSyncStatus("syncing");
     try {
+      // Only send logs not yet synced (track by lastSyncTs in localStorage)
+      const lastSync = localStorage.getItem("wt-last-sync") || "0";
+      const newLogs = lg.filter(l => (l.completedAt || l.startedAt || "") > lastSync);
+      const payload = { program: prog, logs: newLogs, session: sess, fullSync: newLogs.length === lg.length };
       const res = await fetch(url, {
         method: "POST",
-        body: JSON.stringify({ program: prog, logs: lg, session: sess }),
+        body: JSON.stringify(payload),
         headers: { "Content-Type": "text/plain" }
       });
       const text = await res.text();
-      setSyncStatus(text.includes('"ok":true') || res.ok ? "ok" : "fail");
+      const ok = text.includes('"ok":true') || res.ok;
+      if (ok) localStorage.setItem("wt-last-sync", new Date().toISOString());
+      setSyncStatus(ok ? "ok" : "fail");
     } catch { setSyncStatus("fail"); }
     setTimeout(() => setSyncStatus(""), 3000);
   };
@@ -1331,50 +1557,63 @@ export default function App() {
     const next = JSON.parse(JSON.stringify(program));
     next[sess.day].exercises = next[sess.day].exercises.map(ex => {
       const sx = sess.exercises.find(e => e.id === ex.id); if (!sx) return ex;
-      if (ex.type === "top_set") { const sc = sx.confirmed ? (ex.successCount || 0) + 1 : (ex.successCount || 0); return accepted[ex.id] ? { ...ex, topWeight: ex.topWeight + ex.increment, successCount: 0 } : { ...ex, successCount: sc }; }
-      if (ex.type === "rep_range") { const base = { ...ex, lastReps: sx.reps }; return accepted[ex.id] ? { ...base, weight: ex.weight + ex.increment } : base; }
+      if (ex.type === "top_set") {
+        // Use weight from session in case user adjusted it during session
+        const sessionWeight = sx.topWeight !== undefined ? sx.topWeight : ex.topWeight;
+        const sc = sx.confirmed ? (ex.successCount || 0) + 1 : (ex.successCount || 0);
+        return accepted[ex.id]
+          ? { ...ex, topWeight: sessionWeight + ex.increment, successCount: 0 }
+          : { ...ex, topWeight: sessionWeight, successCount: sc };
+      }
+      if (ex.type === "rep_range") {
+        // Use weight from session in case user adjusted it during session
+        const sessionWeight = sx.weight !== undefined ? sx.weight : ex.weight;
+        const base = { ...ex, lastReps: sx.reps, weight: sessionWeight };
+        return accepted[ex.id] ? { ...base, weight: sessionWeight + ex.increment } : base;
+      }
       return ex;
     });
     setLogs(newLogs); setProgram(next); setSession(null);
+    // Use explicit values, not refs, since we just computed them
     persist(next, newLogs, null);
     syncToGoogle(next, newLogs, null);
     setView("home");
   };
 
   const doAddExercise = (day, ex) => {
-    const next = JSON.parse(JSON.stringify(program));
+    const next = JSON.parse(JSON.stringify(programRef.current));
     next[day].exercises.push(ex);
     setProgram(next);
-    persist(next, logs, session);
+    persist(next, logsRef.current, sessionRef.current);
     setView("overview"); setAddTarget(null);
   };
 
   const doReorder = (day, fromIdx, toIdx) => {
-    const next = JSON.parse(JSON.stringify(program));
+    const next = JSON.parse(JSON.stringify(programRef.current));
     const [moved] = next[day].exercises.splice(fromIdx, 1);
     next[day].exercises.splice(toIdx, 0, moved);
     setProgram(next);
-    persist(next, logs, session);
+    persist(next, logsRef.current, sessionRef.current);
   };
 
   const doDelete = (day, exId) => {
-    const next = JSON.parse(JSON.stringify(program));
+    const next = JSON.parse(JSON.stringify(programRef.current));
     next[day].exercises = next[day].exercises.filter(e => e.id !== exId);
     setProgram(next);
-    persist(next, logs, session);
+    persist(next, logsRef.current, sessionRef.current);
   };
 
   const doSaveEdit = (day, exId, updates) => {
-    const next = JSON.parse(JSON.stringify(program));
+    const next = JSON.parse(JSON.stringify(programRef.current));
     next[day].exercises = next[day].exercises.map(ex => ex.id === exId ? { ...ex, ...updates } : ex);
     setProgram(next);
-    persist(next, logs, session);
+    persist(next, logsRef.current, sessionRef.current);
     setView("overview"); setEditTarget(null);
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}><div className="font-mono text-sm animate-pulse" style={{ color: C.muted }}>Laster...</div></div>;
   return (
-    <div className="min-h-screen" style={{ background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif", paddingTop: "env(safe-area-inset-top)" }}>
+    <div className="min-h-screen" style={{ background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif", }}>
       {view === "home" && <HomeView program={program} logs={logs} session={session} saveStatus={saveStatus} onStart={doStart} onContinue={() => setView("session")} onAbandon={() => { setSession(null); persist(program, logs, null); }} onProgram={() => setView("overview")} onHistory={() => setView("history")} onProgression={() => setView("progression")} onSettings={() => setView("settings")} />}
       {view === "session" && session && <SessionView session={session} program={program} saveStatus={saveStatus} onUpdate={doUpdateSession} onComplete={doComplete} onBack={() => setView("home")} />}
       {view === "overview" && <OverviewView program={program} onBack={() => setView("home")} onEdit={(day, exId) => { setEditTarget({ day, exId }); setView("edit"); }} onAdd={(day) => { setAddTarget(day); setView("add"); }} onReorder={doReorder} onDelete={doDelete} />}
