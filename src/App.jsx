@@ -577,7 +577,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
   }) : [];
 
   if (summary) return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32, background: C.bg, color: C.text }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, background: C.bg, borderBottom: `1px solid ${C.border}`, paddingTop: "max(12px, env(safe-area-inset-top))", paddingBottom: 12, paddingLeft: 16, paddingRight: 16 }}>
         <div className="max-w-lg mx-auto flex items-center gap-3"><button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button><span className="font-black text-lg">Økt fullført</span></div>
       </div>
@@ -600,7 +600,7 @@ function SessionView({ session, program, saveStatus, onUpdate, onComplete, onBac
   );
 
   return (
-    <div className="min-h-screen" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text }}>
       <div className="sticky top-0" style={{ zIndex: 50, background: C.bg + "f2", borderBottom: `1px solid ${C.border}`, }}>
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center gap-3 mb-2">
@@ -655,7 +655,7 @@ function SettingsView({ onBack, onSyncNow, onRestore, syncStatus }) {
   const saveUrl = (v) => { setUrl(v); try { localStorage.setItem("wt-gs-url", v); } catch {} setSaved(true); setTimeout(() => setSaved(false), 2000); };
   const ready = url.length > 20;
   return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32, background: C.bg, color: C.text }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -803,7 +803,7 @@ function OverviewView({ program, onBack, onEdit, onAdd, onReorder, onDelete }) {
   const days = ["monday", "wednesday", "friday"];
 
   return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32, background: C.bg, color: C.text }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -901,7 +901,7 @@ function HistoryView({ logs, program, onBack, onDeleteLog, onConfirmDelete }) {
   const [csvOpen, setCsvOpen] = useState(false);
   const filtered = filter === "all" ? logs : logs.filter(l => l.day === filter);
   return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32, background: C.bg, color: C.text }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><ArrowLeft size={20} /></button>
@@ -1092,7 +1092,7 @@ function ProgressionView({ logs, program, onBack }) {
   const selected = selEx ? exHistory[selEx] : null;
 
   return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32, background: C.bg, color: C.text }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={selEx ? () => setSelEx(null) : onBack} className="p-2 rounded-xl" style={{ background: C.card }}>
@@ -1308,7 +1308,7 @@ function AddExerciseView({ day, program, onSave, onBack }) {
   );
 
   return (
-    <div className="min-h-screen pb-8" style={{background:C.bg, color:C.text}}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32,background:C.bg, color:C.text}}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{background:C.card}}><X size={20}/></button>
@@ -1376,7 +1376,7 @@ function EditView({ program, day, exerciseId, onSave, onBack }) {
   const updRep = (i, v) => { const r = [...form.lastReps]; r[i] = v; upd("lastReps", r); };
   const Row = ({ label, children }) => <div className="flex items-center justify-between py-3" style={{ borderBottom: `1px solid ${C.border}` }}><span className="text-sm" style={{ color: C.muted }}>{label}</span>{children}</div>;
   return (
-    <div className="min-h-screen pb-8" style={{ background: C.bg, color: C.text }}>
+    <div style={{ minHeight: "100vh", paddingBottom: 32, background: C.bg, color: C.text }}>
       <div style={{ position: "sticky", top: 0, zIndex: 50, padding: "max(12px, env(safe-area-inset-top)) 16px 12px", background: C.bg, borderBottom: `1px solid ${C.border}` }}>
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button onClick={onBack} className="p-2 rounded-xl" style={{ background: C.card }}><X size={20} /></button>
@@ -1611,9 +1611,9 @@ export default function App() {
     setView("overview"); setEditTarget(null);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}><div className="font-mono text-sm animate-pulse" style={{ color: C.muted }}>Laster...</div></div>;
+  if (loading) return <div style={{ minHeight: "100vh", minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg }}><div style={{ color: C.muted, fontSize: 14, fontFamily: "monospace" }}>Laster...</div></div>;
   return (
-    <div className="min-h-screen" style={{ background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif", }}>
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "system-ui,-apple-system,sans-serif" }}>
       {view === "home" && <HomeView program={program} logs={logs} session={session} saveStatus={saveStatus} onStart={doStart} onContinue={() => setView("session")} onAbandon={() => { setSession(null); persist(program, logs, null); }} onProgram={() => setView("overview")} onHistory={() => setView("history")} onProgression={() => setView("progression")} onSettings={() => setView("settings")} />}
       {view === "session" && session && <SessionView session={session} program={program} saveStatus={saveStatus} onUpdate={doUpdateSession} onComplete={doComplete} onBack={() => setView("home")} />}
       {view === "overview" && <OverviewView program={program} onBack={() => setView("home")} onEdit={(day, exId) => { setEditTarget({ day, exId }); setView("edit"); }} onAdd={(day) => { setAddTarget(day); setView("add"); }} onReorder={doReorder} onDelete={doDelete} />}
