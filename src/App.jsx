@@ -940,7 +940,7 @@ function HistoryView({ logs, program, onBack, onDeleteLog, onConfirmDelete }) {
                   <div className="font-black text-sm">{d.label} <span style={{ color: C.muted, fontWeight: 400 }}>— {d.sub}</span></div>
                   <div className="flex items-center gap-3">
                     <div className="font-mono text-xs" style={{ color: C.muted }}>{fmtDate(log.startedAt)}</div>
-                    <div onClick={() => onConfirmDelete(i)} style={{ padding: 8, cursor: "pointer", color: C.dim }}>
+                    <div onClick={() => onConfirmDelete(logs.indexOf(log))} style={{ padding: 8, cursor: "pointer", color: C.dim }}>
                       <X size={16} />
                     </div>
                   </div>
@@ -1632,7 +1632,7 @@ export default function App() {
             <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 6, color: "#f7f7f7" }}>Slett økt?</div>
             <div style={{ color: "#a0aec0", fontSize: 14, marginBottom: 24 }}>Dette kan ikke angres.</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => { const deleted = logs[confirmDelete]; const newLogs = logs.filter((_, idx) => idx !== confirmDelete); setLogs(newLogs); persist(program, newLogs, session); deleteFromGoogle(deleted?.startedAt); setConfirmDelete(null); }}
+              <button onClick={() => { const currentLogs = logsRef.current; const deleted = currentLogs[confirmDelete]; const newLogs = currentLogs.filter((_, idx) => idx !== confirmDelete); setLogs(newLogs); persist(programRef.current, newLogs, sessionRef.current); syncToGoogle(programRef.current, newLogs, sessionRef.current); setConfirmDelete(null); }}
                 style={{ width: "100%", background: "#e53e3e", color: "#fff", border: "none", borderRadius: 14, padding: "16px 0", fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
                 Slett økt
               </button>
