@@ -1458,25 +1458,30 @@ export default function App() {
   const syncToGoogle = async (prog, lg, sess) => {
     const url = getGsUrl();
     if (!url) return;
+    try {
+      await fetch(url, {
+        method: "POST",
+        body: JSON.stringify({ program: prog, logs: lg, session: sess }),
+        headers: { "Content-Type": "text/plain" }
+      });
+    } catch {}
+  };
+
+  const manualSyncToGoogle = async () => {
+    const url = getGsUrl();
+    if (!url) return;
     setSyncStatus("syncing");
     try {
-      // Only send logs not yet synced (track by lastSyncTs in localStorage)
-      const lastSync = localStorage.getItem("wt-last-sync") || "0";
-      const newLogs = lg.filter(l => (l.completedAt || l.startedAt || "") > lastSync);
-      const payload = { program: prog, logs: newLogs, session: sess, fullSync: newLogs.length === lg.length };
       const res = await fetch(url, {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ program: programRef.current, logs: logsRef.current, session: sessionRef.current }),
         headers: { "Content-Type": "text/plain" }
       });
       const text = await res.text();
-      const ok = text.includes('"ok":true') || res.ok;
-      if (ok) localStorage.setItem("wt-last-sync", new Date().toISOString());
-      setSyncStatus(ok ? "ok" : "fail");
+      setSyncStatus(text.includes('"ok":true') || res.ok ? "ok" : "fail");
     } catch { setSyncStatus("fail"); }
     setTimeout(() => setSyncStatus(""), 3000);
   };
-
   const restoreFromGoogle = async () => {
     const url = getGsUrl();
     if (!url) return;
@@ -1574,9 +1579,8 @@ export default function App() {
       return ex;
     });
     setLogs(newLogs); setProgram(next); setSession(null);
-    // Use explicit values, not refs, since we just computed them
     persist(next, newLogs, null);
-    syncToGoogle(next, newLogs, null);
+    syncToGoogle(next, newLogs, completed); // pass completed session
     setView("home");
   };
 
@@ -1617,18 +1621,18 @@ export default function App() {
       {view === "home" && <HomeView program={program} logs={logs} session={session} saveStatus={saveStatus} onStart={doStart} onContinue={() => setView("session")} onAbandon={() => { setSession(null); persist(program, logs, null); }} onProgram={() => setView("overview")} onHistory={() => setView("history")} onProgression={() => setView("progression")} onSettings={() => setView("settings")} />}
       {view === "session" && session && <SessionView session={session} program={program} saveStatus={saveStatus} onUpdate={doUpdateSession} onComplete={doComplete} onBack={() => setView("home")} />}
       {view === "overview" && <OverviewView program={program} onBack={() => setView("home")} onEdit={(day, exId) => { setEditTarget({ day, exId }); setView("edit"); }} onAdd={(day) => { setAddTarget(day); setView("add"); }} onReorder={doReorder} onDelete={doDelete} />}
-      {view === "history" && <HistoryView logs={logs} program={program} onBack={() => setView("home")} onDeleteLog={(i) => { const newLogs = logs.filter((_, idx) => idx !== i); setLogs(newLogs); persist(program, newLogs, session); }} onConfirmDelete={(i) => setConfirmDelete(i)} />}
+      {view === "history" && <HistoryView logs={logs} program={program} onBack={() => setView("home")} onDeleteLog={(i) => { const deleted = logs[i]; const newLogs = logs.filter((_, idx) => idx !== i); setLogs(newLogs); persist(program, newLogs, session); deleteFromGoogle(deleted?.startedAt); }} onConfirmDelete={(i) => setConfirmDelete(i)} />}
       {view === "progression" && <ProgressionView logs={logs} program={program} onBack={() => setView("home")} />}
       {view === "edit" && editTarget && <EditView program={program} day={editTarget.day} exerciseId={editTarget.exId} onSave={doSaveEdit} onBack={() => { setView("overview"); setEditTarget(null); }} />}
       {view === "add" && addTarget && <AddExerciseView day={addTarget} program={program} onSave={doAddExercise} onBack={() => { setView("overview"); setAddTarget(null); }} />}
-      {view === "settings" && <SettingsView onBack={() => setView("home")} onSyncNow={() => syncToGoogle(program, logs, session)} onRestore={restoreFromGoogle} syncStatus={syncStatus} />}
+      {view === "settings" && <SettingsView onBack={() => setView("home")} onSyncNow={manualSyncToGoogle} onRestore={restoreFromGoogle} syncStatus={syncStatus} />}
       {confirmDelete !== null && (
         <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "16px 16px 40px 16px", background: "rgba(0,0,0,0.8)" }}>
           <div style={{ background: "#1c1c1c", border: "1px solid #444", borderRadius: 20, padding: 24, width: "100%", maxWidth: 480 }}>
             <div style={{ fontWeight: 900, fontSize: 17, marginBottom: 6, color: "#f7f7f7" }}>Slett økt?</div>
             <div style={{ color: "#a0aec0", fontSize: 14, marginBottom: 24 }}>Dette kan ikke angres.</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button onClick={() => { const newLogs = logs.filter((_, idx) => idx !== confirmDelete); setLogs(newLogs); persist(program, newLogs, session); setConfirmDelete(null); }}
+              <button onClick={() => { const deleted = logs[confirmDelete]; const newLogs = logs.filter((_, idx) => idx !== confirmDelete); setLogs(newLogs); persist(program, newLogs, session); deleteFromGoogle(deleted?.startedAt); setConfirmDelete(null); }}
                 style={{ width: "100%", background: "#e53e3e", color: "#fff", border: "none", borderRadius: 14, padding: "16px 0", fontWeight: 900, fontSize: 16, cursor: "pointer" }}>
                 Slett økt
               </button>
