@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
 import { Check, Edit2, TrendingUp, ArrowLeft, Plus, Minus, Trophy, ChevronRight, ChevronDown, X, Clock, List, Eye, EyeOff, RotateCcw, Settings, RefreshCw } from "lucide-react";
@@ -1446,12 +1446,12 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   // Refs to always have latest state in async/closure contexts
-  const programRef = React.useRef(program);
-  const logsRef = React.useRef(logs);
-  const sessionRef = React.useRef(session);
-  React.useEffect(() => { programRef.current = program; }, [program]);
-  React.useEffect(() => { logsRef.current = logs; }, [logs]);
-  React.useEffect(() => { sessionRef.current = session; }, [session]); // "" | "syncing" | "ok" | "fail"
+  const programRef = useRef(program);
+  const logsRef = useRef(logs);
+  const sessionRef = useRef(session);
+  useEffect(() => { programRef.current = program; }, [program]);
+  useEffect(() => { logsRef.current = logs; }, [logs]);
+  useEffect(() => { sessionRef.current = session; }, [session]); // "" | "syncing" | "ok" | "fail"
 
   const getGsUrl = () => { try { return localStorage.getItem("wt-gs-url") || ""; } catch { return ""; } };
 
